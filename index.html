@@ -13,8 +13,8 @@
     <!-- Markdown & LaTeX Parsers -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@5.0.3/lib/index.umd.js"></script>
     <style>
         /* ═══════════════════════════════════════════
            CLEVERLY — Premium Design System
@@ -1747,23 +1747,36 @@
         /* Tables */
         .msg-text table { 
             width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 0.7em; 
-            background: var(--bg-tertiary);
-            border-radius: var(--radius-s);
-            overflow: hidden;
+            border-collapse: separate; 
+            border-spacing: 0;
+            margin: 1.5em 0; 
+            font-size: 0.95em;
             display: block;
             overflow-x: auto;
+            border-radius: var(--radius-m);
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
         }
         .msg-text th, .msg-text td { 
-            border: 1px solid var(--border-default); 
-            padding: 10px 14px; 
+            padding: 14px 18px; 
             text-align: left; 
+            border-bottom: 1px solid var(--border-subtle);
         }
         .msg-text th { 
-            background: var(--bg-hover); 
             font-weight: 600; 
             color: var(--text-primary); 
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border-default);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.85em;
+        }
+        .msg-text tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .msg-text tbody tr:hover td {
+            background: rgba(255,255,255,0.02);
         }
         
         /* KaTeX overrides */
@@ -2103,42 +2116,21 @@
     }
     
     // ── Markdown/LaTeX Renderer ──
-    function renderMarkdown(text) {
-        if (typeof marked === 'undefined') return esc(text);
-        
-        // Protect LaTeX blocks from marked by temporarily replacing them
-        let mathBlocks = [];
-        let t = text.replace(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g, (match) => {
-            mathBlocks.push(match);
-            return `%%%MATH_BLOCK_${mathBlocks.length - 1}%%%`;
-        });
-        t = t.replace(/(\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g, (match) => {
-            mathBlocks.push(match);
-            return `%%%MATH_INLINE_${mathBlocks.length - 1}%%%`;
-        });
-        
-        // Parse markdown
-        let html = marked.parse(t, { breaks: true });
-        
-        // Restore math
-        html = html.replace(/%%%MATH_(BLOCK|INLINE)_(\d+)%%%/g, (match, type, i) => {
-            return mathBlocks[i];
-        });
-        return html;
+    if (typeof marked !== 'undefined' && window.markedKatex) {
+        marked.use(window.markedKatex({
+            throwOnError: false,
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '\\[', right: '\\]', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\(', right: '\\)', display: false}
+            ]
+        }));
     }
 
-    function applyMath(el) {
-        if (typeof renderMathInElement !== 'undefined') {
-            renderMathInElement(el, {
-                delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '\\[', right: '\\]', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false}
-                ],
-                throwOnError: false
-            });
-        }
+    function renderMarkdown(text) {
+        if (typeof marked === 'undefined') return esc(text);
+        return marked.parse(text, { breaks: true });
     }
 
     // ── Model ──
@@ -2511,9 +2503,6 @@
         wrap.appendChild(row);
         
         const textContainer = row.querySelector(".msg-text");
-        if (role === "assistant") {
-            applyMath(textContainer);
-        }
         
         if (scroll) document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight;
         return textContainer;
@@ -2587,7 +2576,6 @@
                 
                 textEl.innerHTML = renderMarkdown(rawAcc) + '<span class="typing-cursor"></span>';
                 cursor = textEl.querySelector('.typing-cursor');
-                applyMath(textEl);
                 
                 c.scrollTop = c.scrollHeight;
                 
