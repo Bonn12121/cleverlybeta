@@ -3264,12 +3264,10 @@
                     continue;
                 }
                 try {
-                    const text = await f.text();
-                    // Basic binary check
-                    if (text.indexOf('\u0000') !== -1) {
-                         toast(`⚠️ ${f.name} appears to be binary. Skipped.`);
-                         continue;
-                    }
+                    let text = await f.text();
+                    
+                    // Strip null bytes instead of aggressively skipping the entire file, as some text dumps contain padding
+                    text = text.replace(/\0/g, '');
                     const safeText = esc(text.slice(0, 150000)); // Cap each file around ~30-40k tokens locally
                     fileContext += `\n\n<details class="attach-drop"><summary>📄 <b>Attached File:</b> ${esc(f.name)}</summary>\n\n<pre><code>\n${safeText}\n</code></pre>\n</details>`;
                 } catch (e) {
