@@ -4713,21 +4713,31 @@
             const tone = localStorage.getItem("cleverly_tone") || "friendly";
             const sys = TONES[tone] || TONES.friendly;
 
+            // Check if CURRENT message has files
+            const currentHasFiles = msgObj.attachments && msgObj.attachments.length > 0;
+            const useMultimodalModel = currentHasFiles;
+
             // Build multimodal-aware messages for the API
             const rawMsgs = chat.messages.map(m => {
                 if (m.role === "user" && m.attachments && m.attachments.length > 0) {
                     // Multimodal message: array of content parts
-                    const parts = [{ type: "text", text: m.content }];
+                    const parts = [{ type: "text", text: m.content || "" }];
                     for (const att of m.attachments) {
                         if (att.type === "image") {
-                            parts.push({ type: "image_url", image_url: { url: att.data } });
+                            // Only include actual image data if we are using a multimodal model for THIS turn
+                            if (useMultimodalModel) {
+                                parts.push({ type: "image_url", image_url: { url: att.data } });
+                            } else {
+                                parts[0].text += `\n[Image attachment omitted]`;
+                            }
                         } else if (att.type === "text") {
                             parts[0].text += `\n\n--- File: ${att.name} ---\n${att.data}\n--- End of file ---`;
                         }
                     }
+                    if (parts.length === 1) return { role: m.role, content: parts[0].text };
                     return { role: m.role, content: parts };
                 }
-                return { role: m.role, content: m.content };
+                return { role: m.role, content: m.content || "" };
             });
 
             // Build the system prompt, injecting search context if available
@@ -4741,9 +4751,8 @@
 
             let chosen = getModel();
             
-            const hasFiles = rawMsgs.some(m => Array.isArray(m.content) && m.content.some(p => p.type === 'image_url' || p.text?.includes('--- File:')));
             let useFallback = true;
-            if (hasFiles) {
+            if (useMultimodalModel) {
                 chosen = "qwen/qwen-2.5-vl-72b-instruct:free";
                 useFallback = false;
             }
