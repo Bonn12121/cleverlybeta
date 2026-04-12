@@ -9,12 +9,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
     <!-- Markdown & LaTeX Parsers -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@5.0.3/lib/index.umd.js"></script>
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
     <style>
         /* ═══════════════════════════════════════════
            CLEVERLY — Premium Design System
@@ -1709,27 +1713,201 @@
         .msg-text li { margin-bottom: 0.25em; }
         
         .msg-text code { 
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            background: rgba(255,255,255,0.08); 
-            padding: 0.15em 0.3em; 
-            border-radius: 4px; 
-            font-size: 0.85em; 
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background: rgba(255,255,255,0.07); 
+            padding: 0.15em 0.4em; 
+            border-radius: 5px; 
+            font-size: 0.84em; 
             color: var(--accent-bright);
+            border: 1px solid rgba(255,255,255,0.06);
         }
+
+        /* ── Code Canvas ── */
+        .code-canvas {
+            position: relative;
+            margin: 1em 0;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: #0d1117;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .code-canvas:hover {
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+        }
+        .code-canvas-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 6px 0 16px;
+            height: 42px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .code-canvas-lang {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .code-canvas-lang-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+            flex-shrink: 0;
+        }
+        .code-canvas-actions {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .code-canvas-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-tertiary);
+            font-family: 'Inter', sans-serif;
+            font-size: 11.5px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .code-canvas-btn:hover {
+            background: rgba(255,255,255,0.07);
+            color: var(--text-primary);
+        }
+        .code-canvas-btn:active {
+            transform: scale(0.95);
+        }
+        .code-canvas-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+        .code-canvas-btn.copied {
+            color: var(--success);
+        }
+        .code-canvas-btn.run-btn {
+            color: var(--success);
+        }
+        .code-canvas-btn.run-btn:hover {
+            background: rgba(34,197,94,0.1);
+        }
+        .code-canvas-btn.edit-btn.editing {
+            color: var(--accent);
+            background: var(--accent-muted);
+        }
+        .code-canvas-body {
+            position: relative;
+            max-height: 520px;
+            overflow: auto;
+        }
+        .code-canvas-body::-webkit-scrollbar { width: 6px; height: 6px; }
+        .code-canvas-body::-webkit-scrollbar-track { background: transparent; }
+        .code-canvas-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        .code-canvas-body::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+        .code-canvas-body pre {
+            margin: 0 !important;
+            padding: 16px 20px !important;
+            background: transparent !important;
+            border: none !important;
+            border-radius: 0 !important;
+            font-size: 13.5px;
+            line-height: 1.65;
+        }
+        .code-canvas-body pre code {
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background: transparent !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            font-size: inherit;
+            color: #c9d1d9;
+            border: none !important;
+            tab-size: 4;
+        }
+        .code-canvas-body pre code[contenteditable="true"] {
+            outline: none;
+            cursor: text;
+            caret-color: var(--accent);
+        }
+        .code-canvas-body pre code[contenteditable="true"]::selection {
+            background: rgba(0,212,255,0.2);
+        }
+
+        /* Line numbers gutter via CSS counter (optional, clean look) */
+        .code-canvas-body pre code .hljs-ln-numbers { 
+            color: var(--text-quaternary); 
+            padding-right: 16px; 
+            user-select: none; 
+        }
+
+        /* Override hljs background to be transparent */
+        .code-canvas-body .hljs { background: transparent; }
+
+        /* ── Code Canvas iframe preview ── */
+        .code-canvas-preview {
+            border-top: 1px solid rgba(255,255,255,0.06);
+            background: #fff;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+        }
+        .code-canvas-preview iframe {
+            width: 100%;
+            height: 320px;
+            border: none;
+            display: block;
+        }
+        .code-canvas-preview-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.03);
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .code-canvas-preview-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Fallback pre — invisible; code canvas handles all fenced blocks */
         .msg-text pre { 
-            background: var(--bg-primary); 
-            padding: 1em; 
-            border-radius: 8px; 
-            overflow-x: auto; 
-            margin-bottom: 0.7em; 
-            border: 1px solid var(--border-default); 
+            background: transparent; 
+            padding: 0; 
+            margin: 0;
+            border: none; 
+            overflow-x: auto;
         }
         .msg-text pre code { 
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             background: transparent; 
             padding: 0; 
             border-radius: 0; 
             font-size: 0.85em; 
-            color: var(--text-primary);
+            color: #c9d1d9;
+            border: none;
         }
         .msg-text blockquote { 
             border-left: 4px solid var(--indigo); 
@@ -2227,6 +2405,120 @@
             ]
         }));
     }
+
+    // Custom renderer for code blocks → Code Canvas
+    if (typeof marked !== 'undefined') {
+        const renderer = new marked.Renderer();
+        const _codeId = (() => { let n = 0; return () => `cc-${Date.now()}-${n++}`; })();
+
+        renderer.code = function({ text, lang }) {
+            const id = _codeId();
+            const language = (lang || 'text').toLowerCase();
+            const displayLang = language === 'js' ? 'javascript' : language === 'ts' ? 'typescript' : language === 'py' ? 'python' : language;
+
+            // Determine if this code can be run (HTML)
+            const canRun = ['html', 'htm', 'svg'].includes(language);
+
+            // Syntax highlight
+            let highlighted;
+            if (typeof hljs !== 'undefined') {
+                try {
+                    highlighted = hljs.getLanguage(language) 
+                        ? hljs.highlight(text, { language }).value 
+                        : hljs.highlightAuto(text).value;
+                } catch { highlighted = esc(text); }
+            } else {
+                highlighted = esc(text);
+            }
+
+            // Build button SVGs
+            const copySvg = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+            const editSvg = `<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+            const runSvg = `<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></svg>`;
+
+            const runBtn = canRun ? `<button class="code-canvas-btn run-btn" data-canvas-id="${id}" data-action="run" title="Run">${runSvg} Run</button>` : '';
+
+            return `<div class="code-canvas" id="${id}" data-lang="${language}">
+                <div class="code-canvas-header">
+                    <div class="code-canvas-lang"><span class="code-canvas-lang-dot"></span>${displayLang}</div>
+                    <div class="code-canvas-actions">
+                        <button class="code-canvas-btn copy-btn" data-canvas-id="${id}" data-action="copy" title="Copy">${copySvg} Copy</button>
+                        <button class="code-canvas-btn edit-btn" data-canvas-id="${id}" data-action="edit" title="Edit">${editSvg} Edit</button>
+                        ${runBtn}
+                    </div>
+                </div>
+                <div class="code-canvas-body"><pre><code class="hljs language-${language}">${highlighted}</code></pre></div>
+            </div>`;
+        };
+
+        marked.use({ renderer });
+    }
+
+    // Wire up code canvas buttons (delegated)
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.code-canvas-btn');
+        if (!btn) return;
+        const canvasId = btn.dataset.canvasId;
+        const action = btn.dataset.action;
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const codeEl = canvas.querySelector('.code-canvas-body pre code');
+        if (!codeEl) return;
+
+        if (action === 'copy') {
+            const text = codeEl.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const origHTML = btn.innerHTML;
+                btn.classList.add('copied');
+                btn.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+                toast('Copied to clipboard');
+                setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = origHTML; }, 2000);
+            });
+        }
+
+        if (action === 'edit') {
+            const isEditing = codeEl.contentEditable === 'true';
+            if (isEditing) {
+                codeEl.contentEditable = 'false';
+                btn.classList.remove('editing');
+                // Re-highlight after edit
+                const lang = canvas.dataset.lang;
+                if (typeof hljs !== 'undefined') {
+                    const raw = codeEl.textContent;
+                    try {
+                        codeEl.innerHTML = hljs.getLanguage(lang)
+                            ? hljs.highlight(raw, { language: lang }).value
+                            : hljs.highlightAuto(raw).value;
+                    } catch {}
+                }
+            } else {
+                codeEl.contentEditable = 'true';
+                codeEl.focus();
+                btn.classList.add('editing');
+            }
+        }
+
+        if (action === 'run') {
+            const code = codeEl.textContent;
+            // Remove existing preview
+            const existing = canvas.querySelector('.code-canvas-preview');
+            if (existing) { existing.remove(); return; }
+
+            const preview = document.createElement('div');
+            preview.className = 'code-canvas-preview';
+            const iframe = document.createElement('iframe');
+            iframe.sandbox = 'allow-scripts allow-same-origin';
+            preview.appendChild(iframe);
+            canvas.appendChild(preview);
+            
+            // Write HTML into iframe
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            doc.open();
+            doc.write(code);
+            doc.close();
+        }
+    });
 
     function renderMarkdown(text) {
         if (typeof marked === 'undefined') return esc(text);
