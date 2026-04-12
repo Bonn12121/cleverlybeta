@@ -4582,12 +4582,18 @@
         // AI auto-detect: ask the model if the query needs a web search
         async function shouldAutoSearch(prompt, chatMessages) {
             // Quick heuristics first — skip obvious no-search cases
-            const lower = prompt.toLowerCase();
-            const noSearchPatterns = /^(hi|hello|hey|thanks|thank you|yes|no|ok|okay|sure|got it)$/i;
-            if (noSearchPatterns.test(prompt.trim())) return null;
+            const lower = prompt.trim().toLowerCase();
+            const noSearchPatterns = /^(hi|hello|hey|thanks|thank you|yes|no|ok|okay|sure|got it|bye|goodbye|see you|lol|haha|wow|cool|nice|great|good|yep|nope|yea|yeah|nah|bruh|bro|dude|man|ugh|hmm|hm|oh|ah|k|kk|ty|thx|np|gg|idk|idc|lmao|omg|wtf|wth|pls|plz)$/i;
+            if (noSearchPatterns.test(lower)) return null;
+            if (lower.length < 8) return null;
 
             // Use a lightweight check via the AI itself
             const checkModel = USE_SLOW_MODE ? ALL_SLOW[ALL_SLOW.length - 1] : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
+            
+            // Strict 4-second timeout so it never blocks the main response
+            const searchAbort = new AbortController();
+            const searchTimeout = setTimeout(() => searchAbort.abort(), 4000);
+            
             try {
                 const checkMessages = [
                     { role: "system", content: `You are a search-intent classifier. Determine if the user's message requires up-to-date web search results to answer properly. Consider if the question is about: current events, real-time data, recent news, specific facts you might not know, weather, stock prices, sports scores, or anything that changes frequently.\n\nRespond with ONLY a JSON object: {"search": true, "query": "optimized search query"} or {"search": false}\nNo other text.` },
@@ -4608,8 +4614,10 @@
                         temperature: 0,
                         stream: false
                     }),
+                    signal: searchAbort.signal,
                 });
 
+                clearTimeout(searchTimeout);
                 if (!res.ok) return null;
                 const data = await res.json();
                 const content = data.choices?.[0]?.message?.content?.trim();
@@ -4624,7 +4632,9 @@
                 }
                 return null;
             } catch (err) {
-                console.error('Auto-search detection error:', err);
+                clearTimeout(searchTimeout);
+                if (err.name === 'AbortError') console.log('Auto-search timed out, skipping.');
+                else console.error('Auto-search detection error:', err);
                 return null;
             }
         }
