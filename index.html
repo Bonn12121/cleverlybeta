@@ -3009,8 +3009,21 @@
         const ta = document.getElementById("userInput");
         const p = ta.value.trim();
         if (!p) return;
+        
         ta.value = ""; autoResize(); syncSendBtn();
         const chatId = S.activeId ?? newChat().id;
+
+        // Safety Moderation Filter
+        if (/(how to die|build a bomb|make a bomb|kill myself|suicide|make explosives|hire a hitman|illegal drug)/i.test(p)) {
+            const chat = S.chats.find(c => c.id === chatId) || S.chats[0];
+            const blockedText = "#############\n\n**Note:** Violation Question";
+            chat.messages.push({ role: "user", content: blockedText });
+            save(); renderMessages();
+            appendMsg("assistant", "Your request violated our safety policies and was blocked.");
+            toast("⚠️ Message blocked due to policy violation");
+            return;
+        }
+
         if (onCooldown() || S.streaming) { enqueue(p, chatId); return; }
         await doSend(p, chatId);
     }
