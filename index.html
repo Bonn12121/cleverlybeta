@@ -4664,7 +4664,7 @@
                 searchQuery = prompt;
                 // Keep S.searchEnabled on — user controls it manually
                 toast('🔍 Searching the web...');
-            } else {
+            } else if (!msgObj.attachments || msgObj.attachments.length === 0) {
                 // Auto-search: let AI decide if search is needed
                 searchQuery = await shouldAutoSearch(prompt, chat.messages);
             }
