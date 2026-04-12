@@ -4780,8 +4780,8 @@
             while (true) {
                 const model = nextModel();
                 if (!model) break;
-                if (attempt > 0) showRetry(`Trying fallback: ${model}…`);
-                setStatus(`Streaming — ${model}…`);
+                if (attempt > 0) showRetry(`Trying another model…`);
+                setStatus(`Thinking…`);
 
                 const node = createStream();
                 let ok = false;
@@ -4791,8 +4791,8 @@
                     if (!answer.trim()) { node.remove(); markDead(model); lastErr = new Error("Empty response — model may be unavailable."); attempt++; continue; }
                     chat.messages.push({ role: "assistant", content: answer });
                     save(); renderSidebar(); startCooldown(); showRetry("");
-                    setNotice(attempt > 0 ? `Answered by fallback: ${model}` : "");
-                    setStatus(`Done — ${model}`);
+                    setNotice("");
+                    setStatus(`Done`);
                     lastErr = null; ok = true;
                 } catch (err) {
                     if (err.name === "AbortError") {
@@ -4814,8 +4814,8 @@
             if (lastErr) {
                 const pool = USE_SLOW_MODE ? ALL_SLOW : ALL_FREE;
                 const hint = lastErr.isAuthError ? "API key rejected. Check settings."
-                    : pool.filter(m => !deadModels.has(m)).length === 0 ? "All models are down. Try again later."
-                        : `${pool.filter(m => !deadModels.has(m)).length} model(s) still available — switch model and retry.`;
+                    : pool.filter(m => !deadModels.has(m)).length === 0 ? "All models are busy. Try again later."
+                        : "Please try again in a moment.";
                 appendMsg("assistant", `Could not get a response.\n\n${lastErr.message}\n\n${hint}`);
                 setNotice(lastErr.message, true); setStatus("Error");
                 if (chat.messages.at(-1)?.role === "user") { chat.messages.pop(); save(); }
