@@ -4379,8 +4379,7 @@
         async function callAPI(model, messages, onToken) {
             abortCtrl = new AbortController();
 
-            const forcedOpenRouter = model === "qwen/qwen-2.5-vl-72b-instruct:free";
-            const useSlow = USE_SLOW_MODE && !forcedOpenRouter;
+            const useSlow = USE_SLOW_MODE;
 
             const endpoint = useSlow ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
 
@@ -4391,6 +4390,8 @@
                     payload = { model, messages, temperature: 1, top_p: 0.95, max_tokens: 16384, reasoning_budget: 16384, chat_template_kwargs: { "enable_thinking": true }, stream: true };
                 } else if (model === "qwen/qwen3.5-122b-a10b") {
                     payload = { model, messages, temperature: 0.60, top_p: 0.95, max_tokens: 16384, chat_template_kwargs: { "enable_thinking": true }, stream: true };
+                } else if (model.includes("vl") || model.includes("vision")) {
+                    payload = { model, messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
                 } else {
                     payload = { model: "qwen/qwen3-coder-480b-a35b-instruct", messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
                 }
