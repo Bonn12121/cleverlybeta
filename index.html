@@ -2446,18 +2446,19 @@
         const textEl = row.querySelector(".msg-text");
         const cursor = textEl.querySelector(".typing-cursor");
         let acc = "";
-        let queue = [];
+        let charQueue = [];
         let isTyping = false;
 
         async function processQueue() {
             if (isTyping) return;
             isTyping = true;
-            while (queue.length > 0) {
-                const token = queue.shift();
-                textEl.insertBefore(document.createTextNode(token), cursor);
+            while (charQueue.length > 0) {
+                const char = charQueue.shift();
+                textEl.insertBefore(document.createTextNode(char), cursor);
                 c.scrollTop = c.scrollHeight;
-                // Dynamically adjust speed based on backlog
-                const delay = queue.length > 20 ? 0 : (queue.length > 5 ? 10 : 25);
+                
+                // Typing speed: faster if many chars are waiting
+                const delay = charQueue.length > 50 ? 1 : (charQueue.length > 15 ? 5 : 20);
                 await new Promise(r => setTimeout(r, delay));
             }
             isTyping = false;
@@ -2466,13 +2467,13 @@
         return {
             append(token) {
                 acc += token;
-                queue.push(token);
+                for (let c of token) charQueue.push(c);
                 processQueue();
             },
             async finish() {
-                // Ensure remaining tokens flush quickly
-                while (queue.length > 0) {
-                    textEl.insertBefore(document.createTextNode(queue.shift()), cursor);
+                // Wait for typing to finish
+                while (charQueue.length > 0) {
+                    await new Promise(r => setTimeout(r, 10));
                 }
                 c.scrollTop = c.scrollHeight;
                 cursor.remove();
@@ -2737,7 +2738,7 @@
         appendMsg("user", prompt);
         save();
 
-        // ── Web Search Phase ──
+        // Web Search Phase
         let searchContext = null;
         let searchResults = null;
         let searchQuery = null;
@@ -2745,8 +2746,7 @@
         // Manual search mode (user clicked the search button)
         if (S.searchEnabled) {
             searchQuery = prompt;
-            S.searchEnabled = false;
-            syncSearchBtn();
+            // Removed S.searchEnabled = false; to keep it on as requested
         } else {
             // Auto-search: let AI decide if search is needed
             setStatus('Analyzing query...');
