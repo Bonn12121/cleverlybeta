@@ -1744,6 +1744,28 @@
         .msg-text a { color: var(--accent); text-decoration: none; }
         .msg-text a:hover { text-decoration: underline; }
         
+        /* Tables */
+        .msg-text table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 0.7em; 
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-s);
+            overflow: hidden;
+            display: block;
+            overflow-x: auto;
+        }
+        .msg-text th, .msg-text td { 
+            border: 1px solid var(--border-default); 
+            padding: 10px 14px; 
+            text-align: left; 
+        }
+        .msg-text th { 
+            background: var(--bg-hover); 
+            font-weight: 600; 
+            color: var(--text-primary); 
+        }
+        
         /* KaTeX overrides */
         .katex-display { margin: 0.5em 0; overflow-x: auto; overflow-y: hidden; }
         .msg-text .katex { font-size: 1.05em; }
