@@ -2353,7 +2353,7 @@
     async function callAPI(model, messages, onToken) {
         abortCtrl = new AbortController();
         
-        const endpoint = USE_SLOW_MODE ? "http://localhost:3000/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
+        const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
         const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
         const reqModel = USE_SLOW_MODE ? "meta/llama-3.1-405b-instruct" : model;
 
