@@ -2408,50 +2408,52 @@
 
     // Custom renderer for code blocks → Code Canvas
     if (typeof marked !== 'undefined') {
-        const renderer = new marked.Renderer();
         const _codeId = (() => { let n = 0; return () => `cc-${Date.now()}-${n++}`; })();
 
-        renderer.code = function({ text, lang }) {
-            const id = _codeId();
-            const language = (lang || 'text').toLowerCase();
-            const displayLang = language === 'js' ? 'javascript' : language === 'ts' ? 'typescript' : language === 'py' ? 'python' : language;
+        marked.use({
+            renderer: {
+                code(codeOrToken, infostring) {
+                    // Handle both marked v4 (positional args) and v5+ (object token)
+                    let text, lang;
+                    if (typeof codeOrToken === 'object' && codeOrToken !== null) {
+                        text = codeOrToken.text;
+                        lang = codeOrToken.lang;
+                    } else {
+                        text = codeOrToken;
+                        lang = infostring;
+                    }
+                    if (!text && text !== '') return '<pre><code></code></pre>';
 
-            // Determine if this code can be run (HTML)
-            const canRun = ['html', 'htm', 'svg'].includes(language);
+                    const id = _codeId();
+                    const language = (lang || 'text').toLowerCase().trim();
+                    const displayLang = language === 'js' ? 'javascript' : language === 'ts' ? 'typescript' : language === 'py' ? 'python' : language;
 
-            // Syntax highlight
-            let highlighted;
-            if (typeof hljs !== 'undefined') {
-                try {
-                    highlighted = hljs.getLanguage(language) 
-                        ? hljs.highlight(text, { language }).value 
-                        : hljs.highlightAuto(text).value;
-                } catch { highlighted = esc(text); }
-            } else {
-                highlighted = esc(text);
+                    // Determine if this code can be run (HTML)
+                    const canRun = ['html', 'htm', 'svg'].includes(language);
+
+                    // Syntax highlight
+                    let highlighted;
+                    if (typeof hljs !== 'undefined') {
+                        try {
+                            highlighted = hljs.getLanguage(language) 
+                                ? hljs.highlight(text, { language }).value 
+                                : hljs.highlightAuto(text).value;
+                        } catch { highlighted = esc(text); }
+                    } else {
+                        highlighted = esc(text);
+                    }
+
+                    // Build button SVGs
+                    const copySvg = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+                    const editSvg = `<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+                    const runSvg = `<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></svg>`;
+
+                    const runBtn = canRun ? `<button class="code-canvas-btn run-btn" data-canvas-id="${id}" data-action="run" title="Run">${runSvg} Run</button>` : '';
+
+                    return `<div class="code-canvas" id="${id}" data-lang="${language}"><div class="code-canvas-header"><div class="code-canvas-lang"><span class="code-canvas-lang-dot"></span>${displayLang}</div><div class="code-canvas-actions"><button class="code-canvas-btn copy-btn" data-canvas-id="${id}" data-action="copy" title="Copy">${copySvg} Copy</button><button class="code-canvas-btn edit-btn" data-canvas-id="${id}" data-action="edit" title="Edit">${editSvg} Edit</button>${runBtn}</div></div><div class="code-canvas-body"><pre><code class="hljs language-${language}">${highlighted}</code></pre></div></div>`;
+                }
             }
-
-            // Build button SVGs
-            const copySvg = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
-            const editSvg = `<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-            const runSvg = `<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></svg>`;
-
-            const runBtn = canRun ? `<button class="code-canvas-btn run-btn" data-canvas-id="${id}" data-action="run" title="Run">${runSvg} Run</button>` : '';
-
-            return `<div class="code-canvas" id="${id}" data-lang="${language}">
-                <div class="code-canvas-header">
-                    <div class="code-canvas-lang"><span class="code-canvas-lang-dot"></span>${displayLang}</div>
-                    <div class="code-canvas-actions">
-                        <button class="code-canvas-btn copy-btn" data-canvas-id="${id}" data-action="copy" title="Copy">${copySvg} Copy</button>
-                        <button class="code-canvas-btn edit-btn" data-canvas-id="${id}" data-action="edit" title="Edit">${editSvg} Edit</button>
-                        ${runBtn}
-                    </div>
-                </div>
-                <div class="code-canvas-body"><pre><code class="hljs language-${language}">${highlighted}</code></pre></div>
-            </div>`;
-        };
-
-        marked.use({ renderer });
+        });
     }
 
     // Wire up code canvas buttons (delegated)
