@@ -2156,7 +2156,7 @@
     // ── State ──
     let OR_API_KEY = sessionStorage.getItem("or_api_key") || "";
     let USE_SLOW_MODE = sessionStorage.getItem("use_slow_mode") === "true";
-    const NV_DEFAULT_KEY = "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";
+
     const COOLDOWN = 10;
     let abortCtrl = null;
     const deadModels = new Set();
@@ -2766,7 +2766,6 @@
         abortCtrl = new AbortController();
         
         const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
-        const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
         
         let payload;
         
@@ -2782,14 +2781,17 @@
             payload = { model, messages, max_tokens: 16384, temperature: 1.00, top_p: 0.95, stream: true, chat_template_kwargs: {"enable_thinking":true} };
         }
 
+        const headers = { 
+            "Content-Type": "application/json",
+            "HTTP-Referer": window.location.origin, 
+            "X-Title": "Cleverly"
+        };
+        // Only send auth header for fast mode (OpenRouter). Slow mode proxy injects the key server-side.
+        if (!USE_SLOW_MODE) headers["Authorization"] = `Bearer ${OR_API_KEY}`;
+
         const res = await fetch(endpoint, {
             method: "POST",
-            headers: { 
-                "Authorization": `Bearer ${authKey}`, 
-                "Content-Type": "application/json",
-                "HTTP-Referer": window.location.origin, 
-                "X-Title": "Cleverly"
-            },
+            headers,
             body: JSON.stringify(payload),
             signal: abortCtrl.signal,
         });
@@ -2975,16 +2977,12 @@
             ];
 
             const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
-            const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
+            const searchHeaders = { "Content-Type": "application/json", "HTTP-Referer": window.location.origin, "X-Title": "Cleverly" };
+            if (!USE_SLOW_MODE) searchHeaders["Authorization"] = `Bearer ${OR_API_KEY}`;
 
             const res = await fetch(endpoint, {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${authKey}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": window.location.origin,
-                    "X-Title": "Cleverly"
-                },
+                headers: searchHeaders,
                 body: JSON.stringify({
                     model: checkModel,
                     messages: checkMessages,
@@ -3026,16 +3024,12 @@
             ];
 
             const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
-            const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
+            const modHeaders = { "Content-Type": "application/json", "HTTP-Referer": window.location.origin, "X-Title": "Cleverly" };
+            if (!USE_SLOW_MODE) modHeaders["Authorization"] = `Bearer ${OR_API_KEY}`;
 
             const res = await fetch(endpoint, {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${authKey}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": window.location.origin,
-                    "X-Title": "Cleverly"
-                },
+                headers: modHeaders,
                 body: JSON.stringify({
                     model: checkModel,
                     messages: checkMessages,
@@ -3062,18 +3056,11 @@
 
     // ── Send ──
     async function doSend(prompt, chatId) {
-        let isViolation = false;
-        
         setStatus('Checking safety...');
         S.streaming = true;
         syncSendBtn(); 
 
         const isHarmfulCheck = await isHarmful(prompt);
-
-        if (isHarmfulCheck) {
-            prompt = "#############\n\n**Note:** Violation Question";
-            isViolation = true;
-        }
 
         S.streaming = true; syncSendBtn(); setNotice(""); showRetry("");
 
@@ -3098,10 +3085,8 @@
         appendMsg("user", prompt, true, -1, null, msgObj.attachments);
         save();
 
-        if (isViolation) {
-            appendMsg("assistant", "Your request violated our safety policies and was blocked.");
-            toast("⚠️ Message blocked due to policy violation");
-            S.streaming = false; syncSendBtn();
+        if (isHarmfulCheck) {
+            S.streaming = false; syncSendBtn(); setStatus("");
             return;
         }
 

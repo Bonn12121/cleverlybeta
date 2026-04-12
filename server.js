@@ -1,12 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Serper search proxy
 app.post('/api/search', async (req, res) => {
@@ -28,24 +28,45 @@ app.post('/api/search', async (req, res) => {
     }
 });
 
+// NVIDIA completions proxy — injects API key from env
+app.post('/api/completions', async (req, res) => {
+    const NV_KEY = process.env.NV_API_KEY;
+    if (!NV_KEY) return res.status(500).json({ error: 'NV_API_KEY not set in environment' });
+
+    try {
+        const nvidiaRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${NV_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(req.body),
+        });
+
+        // Forward status and headers
+        res.status(nvidiaRes.status);
+        res.set('Content-Type', nvidiaRes.headers.get('content-type') || 'application/json');
+
+        // Stream the response body
+        const reader = nvidiaRes.body.getReader();
+        const pump = async () => {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) { res.end(); return; }
+                res.write(Buffer.from(value));
+            }
+        };
+        await pump();
+    } catch (err) {
+        console.error('NVIDIA Proxy Error:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Proxy error', message: err.message });
+        }
+    }
+});
+
 // Automatically serve the index.html and all files in this folder
 app.use(express.static(__dirname));
-
-// Correct usage of proxy middleware so the path isn't stripped before rewriting
-app.use(createProxyMiddleware({
-    pathFilter: '/api/completions',
-    target: 'https://integrate.api.nvidia.com',
-    changeOrigin: true,
-    pathRewrite: { '^/api/completions': '/v1/chat/completions' },
-    onProxyRes: function (proxyRes, req, res) {
-        proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-        proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept, Authorization';
-    },
-    onError: function(err, req, res) {
-        console.error('Proxy Error:', err);
-        res.status(500).send('Proxy Error');
-    }
-}));
 
 app.listen(PORT, () => {
     console.log(`\n======================================================`);

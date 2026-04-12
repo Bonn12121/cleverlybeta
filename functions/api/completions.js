@@ -1,5 +1,5 @@
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   
   // Only allow POST requests (matching what the frontend sends)
   // or OPTIONS for CORS preflight
@@ -18,14 +18,20 @@ export async function onRequest(context) {
   // The target NVIDIA endpoint
   const targetUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
 
+  // Read API key from environment variable (set in Cloudflare dashboard or .env)
+  const nvApiKey = env.NV_API_KEY;
+  if (!nvApiKey) {
+    return new Response(JSON.stringify({ error: "NV_API_KEY not configured on server" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
   try {
-    // 1. Build clean request headers to avoid forwarding CF- specific or Host headers
+    // 1. Build clean request headers — inject the API key server-side
     const reqHeaders = new Headers();
     reqHeaders.set("Content-Type", request.headers.get("Content-Type") || "application/json");
-    
-    if (request.headers.has("Authorization")) {
-      reqHeaders.set("Authorization", request.headers.get("Authorization"));
-    }
+    reqHeaders.set("Authorization", `Bearer ${nvApiKey}`);
 
     // Read the body text instead of passing the stream to prevent request issues
     const reqBody = await request.text();
