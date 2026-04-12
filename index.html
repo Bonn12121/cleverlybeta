@@ -3304,58 +3304,10 @@
             return null;
         }
     }
-    // AI auto-moderation: dynamically determine if the input is dangerous
-    async function isHarmful(prompt) {
-        const lower = prompt.toLowerCase();
-        // Skip AI check for basic safe interactions
-        if (lower.length < 3 || /^(hi|hello|hey|thanks|yes|no|ok|sure|got it)$/.test(lower.trim())) return false;
 
-        const checkModel = USE_SLOW_MODE ? ALL_SLOW[ALL_SLOW.length - 1] : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
-        try {
-            const checkMessages = [
-                { role: "system", content: `You are a safety classification AI. Determine if the user's message is asking for extremely harmful, dangerous, or strictly illegal information (e.g., suicide, building explosives, hiring a hitman, manufacturing illegal drugs). Respond with ONLY a JSON object: {"harmful": true} if it violates safety policies, or {"harmful": false} if it is safe.\nNo other text.` },
-                { role: "user", content: prompt }
-            ];
-
-            const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
-            const modHeaders = { "Content-Type": "application/json", "HTTP-Referer": window.location.origin, "X-Title": "Cleverly" };
-            if (!USE_SLOW_MODE) modHeaders["Authorization"] = `Bearer ${OR_API_KEY}`;
-
-            const res = await fetch(endpoint, {
-                method: "POST",
-                headers: modHeaders,
-                body: JSON.stringify({
-                    model: checkModel,
-                    messages: checkMessages,
-                    max_tokens: 20,
-                    temperature: 0,
-                    stream: false
-                }),
-            });
-
-            if (!res.ok) return false;
-            const data = await res.json();
-            const content = data.choices?.[0]?.message?.content?.trim();
-            if (!content) return false;
-
-            const jsonMatch = content.match(/\{[^}]+\}/);
-            if (!jsonMatch) return false;
-            const parsed = JSON.parse(jsonMatch[0]);
-            return parsed.harmful === true;
-        } catch (err) {
-            console.error('Moderation detection error:', err);
-            return false;
-        }
-    }
 
     // ── Send ──
     async function doSend(prompt, chatId) {
-        setStatus('Checking safety...');
-        S.streaming = true;
-        syncSendBtn(); 
-
-        const isHarmfulCheck = await isHarmful(prompt);
-
         S.streaming = true; syncSendBtn(); setNotice(""); showRetry("");
 
         let chat = S.chats.find(c => c.id === chatId);
@@ -3378,11 +3330,6 @@
         chat.messages.push(msgObj);
         appendMsg("user", prompt, true, -1, null, msgObj.attachments);
         save();
-
-        if (isHarmfulCheck) {
-            S.streaming = false; syncSendBtn(); setStatus("");
-            return;
-        }
 
         // Web Search Phase
         let searchContext = null;
@@ -3459,7 +3406,6 @@
             }
             return { role: m.role, content: m.content };
         });
-        const fi = rawMsgs.findIndex(m => m.role === "user");
 
         // Build the system prompt, injecting search context if available
         let sysPrompt = sys;
@@ -3467,16 +3413,8 @@
             sysPrompt += `\n\n[Web Search Results for "${searchQuery}"]:\n${searchContext}\n\nUse the above web search results to inform your answer. Cite sources when possible using [1], [2], etc. If the search results don't contain relevant information, rely on your own knowledge.`;
         }
 
-        // Inject system prompt into first user message
-        if (fi !== -1) {
-            const firstMsg = rawMsgs[fi];
-            if (Array.isArray(firstMsg.content)) {
-                // Multimodal: prepend system to text part
-                firstMsg.content[0].text = `[System: ${sysPrompt}]\n\n${firstMsg.content[0].text}`;
-            } else {
-                rawMsgs[fi] = { role: "user", content: `[System: ${sysPrompt}]\n\n${firstMsg.content}` };
-            }
-        }
+        // Add system prompt as the first message
+        rawMsgs.unshift({ role: "system", content: sysPrompt });
 
         const chosen = getModel();
         let lastErr = null, attempt = 0;
