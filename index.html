@@ -1509,16 +1509,17 @@
                 <span class="icon"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
             </div>
             <h2>Welcome to Cleverly</h2>
-            <p>Connect your free NVIDIA API key to start chatting.</p>
-            <ol class="setup-steps">
-                <li>Go to <a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a> and create an account</li>
-                <li>Navigate to any model and click <strong>Get API Key</strong></li>
-                <li>Click <strong>Generate Key</strong>, name it, and copy it</li>
-                <li>Paste it below and start chatting</li>
+            <p style="color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5;">You need a free OpenRouter API key to chat. Takes 1 minute — no credit card needed.</p>
+            <ol class="setup-steps" style="text-align: left;">
+                <li>Go to <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a> and click <strong>Sign Up</strong> (it's free)</li>
+                <li>After signing in, click your avatar → <strong>API Keys</strong></li>
+                <li>Click <strong>Create Key</strong>, give it any name, copy it</li>
+                <li>Paste your key below and hit <strong>Start Chatting</strong></li>
             </ol>
-            <input class="setup-input" id="setupKeyInput" type="password" placeholder="nvapi-…" />
-            <button class="setup-go" id="setupSaveBtn">Start Chatting</button>
-            <p class="setup-note">Your key is stored locally in your browser. It is only sent to NVIDIA.</p>
+            <input class="setup-input" id="setupKeyInput" type="password" placeholder="sk-or-v1-…" />
+            <button class="setup-go" id="setupSaveBtn" style="margin-bottom: 12px;">Start Chatting</button>
+            <button class="setup-go" id="useSlowModeBtn" style="background: transparent; color: var(--text-secondary); border: 1px solid var(--border-subtle); box-shadow: none;">No thanks, I'd rather use slow mode.</button>
+            <p class="setup-note">🔒 Your key is held <strong>in memory only</strong> — never saved to disk, never sent anywhere except OpenRouter's servers.</p>
         </div>
     </div>
 
@@ -1550,7 +1551,11 @@
                     <div class="switch on" id="darkModeSwitch"></div>
                 </div>
             </div>
-            <button class="btn-save" id="saveSettingsBtn">Save Changes</button>
+            <button class="btn-save" id="saveSettingsBtn" style="margin-bottom: 8px;">Save Changes</button>
+            <button id="restartSetupBtn" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: transparent; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+                <span class="icon"><svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></span>
+                Restart Setup / Change Mode
+            </button>
         </div>
     </div>
 
@@ -1750,7 +1755,9 @@
     }
 
     // ── State ──
-    let API_KEY = localStorage.getItem("nv_api_key") || "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";
+    let OR_API_KEY = sessionStorage.getItem("or_api_key") || "";
+    let USE_SLOW_MODE = sessionStorage.getItem("use_slow_mode") === "true";
+    const NV_DEFAULT_KEY = "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";
     const COOLDOWN = 10;
     let abortCtrl = null;
     const deadModels = new Set();
@@ -2270,10 +2277,20 @@
 
     async function callAPI(model, messages, onToken) {
         abortCtrl = new AbortController();
-        const res = await fetch("http://localhost:3000/api/completions", {
+        
+        const endpoint = USE_SLOW_MODE ? "http://localhost:3000/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
+        const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
+        const reqModel = USE_SLOW_MODE ? "meta/llama-3.1-405b-instruct" : model;
+
+        const res = await fetch(endpoint, {
             method: "POST",
-            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model, messages, max_tokens: 16384, temperature: 1.00, top_p: 0.95, stream: true, chat_template_kwargs: {"enable_thinking":true} }),
+            headers: { 
+                "Authorization": `Bearer ${authKey}`, 
+                "Content-Type": "application/json",
+                "HTTP-Referer": window.location.origin, 
+                "X-Title": "Cleverly"
+            },
+            body: JSON.stringify({ model: reqModel, messages, max_tokens: 16384, temperature: 1.00, top_p: 0.95, stream: true, chat_template_kwargs: {"enable_thinking":true} }),
             signal: abortCtrl.signal,
         });
 
@@ -2537,20 +2554,44 @@
     // Settings
     document.getElementById("settingsBtn").addEventListener("click", () => {
         document.getElementById("settingsModal").classList.add("open");
-        document.getElementById("apiKeyInput").value = API_KEY;
+        document.getElementById("apiKeyInput").value = OR_API_KEY;
+        document.getElementById("apiKeyInput").placeholder = "sk-or-v1-…";
         document.getElementById("aiToneSelect").value = localStorage.getItem("cleverly_tone") || "friendly";
         closeSidebar();
     });
     document.getElementById("closeSettings").addEventListener("click", () => document.getElementById("settingsModal").classList.remove("open"));
     document.getElementById("saveSettingsBtn").addEventListener("click", () => {
         const k = document.getElementById("apiKeyInput").value.trim();
-        if (k) { API_KEY = k; localStorage.setItem("nv_api_key", k); deadModels.clear(); }
+        if (k) { 
+            OR_API_KEY = k; 
+            sessionStorage.setItem("or_api_key", k); 
+            deadModels.clear(); 
+            USE_SLOW_MODE = false; 
+            sessionStorage.removeItem("use_slow_mode");
+            if (typeof updateProviderTag === 'function') updateProviderTag();
+        }
         localStorage.setItem("cleverly_tone", document.getElementById("aiToneSelect").value);
         document.getElementById("settingsModal").classList.remove("open");
-        toast("Settings saved"); setStatus("Settings updated.");
+        toast("Settings saved"); 
+        setStatus(USE_SLOW_MODE ? "Ready — using NVIDIA (Slow Mode)." : "Ready — using OpenRouter.");
     });
     document.getElementById("darkModeSwitch").addEventListener("click", function() { this.classList.toggle("on"); toast(this.classList.contains("on") ? "Dark mode on" : "Light mode coming soon"); });
     document.getElementById("settingsModal").addEventListener("click", e => { if (e.target.id === "settingsModal") document.getElementById("settingsModal").classList.remove("open"); });
+
+    document.getElementById("restartSetupBtn")?.addEventListener("click", () => {
+        OR_API_KEY = "";
+        USE_SLOW_MODE = false;
+        sessionStorage.removeItem("or_api_key");
+        sessionStorage.removeItem("use_slow_mode");
+        
+        document.getElementById("settingsModal").classList.remove("open");
+        document.getElementById("setupKeyInput").value = "";
+        document.getElementById("setupOverlay").style.display = "flex";
+        
+        if (typeof updateProviderTag === 'function') updateProviderTag();
+        toast("Setup restarted"); 
+        setStatus("Waiting for setup...");
+    });
 
     // Prompt library
     document.getElementById("promptLibBtn").addEventListener("click", () => { document.getElementById("promptModal").classList.add("open"); closeSidebar(); });
@@ -2565,22 +2606,42 @@
     });
     document.getElementById("promptModal").addEventListener("click", e => { if (e.target.id === "promptModal") document.getElementById("promptModal").classList.remove("open"); });
 
+    function updateProviderTag() {
+        const tag = document.querySelector(".provider-tag");
+        if(tag) {
+            tag.innerHTML = `${icon('bolt')} via ${USE_SLOW_MODE ? 'NVIDIA' : 'OpenRouter'}`;
+        }
+    }
+
     // Setup
-    if (!localStorage.getItem("nv_api_key") && !API_KEY.startsWith("nvapi-")) document.getElementById("setupOverlay").style.display = "flex";
+    if (!USE_SLOW_MODE && (!OR_API_KEY || !OR_API_KEY.startsWith("sk-or-v1-"))) {
+        document.getElementById("setupOverlay").style.display = "flex";
+    }
 
     document.getElementById("setupSaveBtn").addEventListener("click", () => {
         const k = document.getElementById("setupKeyInput").value.trim();
-        if (!k.startsWith("nvapi-")) { alert("Key must start with nvapi-"); return; }
-        API_KEY = k; localStorage.setItem("nv_api_key", k);
+        if (!k.startsWith("sk-or-v1-")) { alert("Key must start with sk-or-v1-"); return; }
+        OR_API_KEY = k; sessionStorage.setItem("or_api_key", k);
+        USE_SLOW_MODE = false; sessionStorage.removeItem("use_slow_mode");
         document.getElementById("setupOverlay").style.display = "none";
-        toast("Key saved — start chatting"); setStatus("Ready.");
+        toast("Key saved — start chatting"); setStatus("Ready — using OpenRouter.");
+        updateProviderTag();
+    });
+
+    document.getElementById("useSlowModeBtn")?.addEventListener("click", () => {
+        USE_SLOW_MODE = true; sessionStorage.setItem("use_slow_mode", "true");
+        document.getElementById("setupOverlay").style.display = "none";
+        toast("Using slow mode"); setStatus("Ready — using NVIDIA (Slow Mode).");
+        updateProviderTag();
     });
 
     // ── Init ──
     if (S.chats.length) { S.activeId = S.chats[0].id; document.getElementById("activeChatTitle").textContent = S.chats[0].title; }
     else newChat();
 
-    renderSidebar(); renderMessages(); syncSendBtn(); setStatus("Ready — using NVIDIA.");
+    renderSidebar(); renderMessages(); syncSendBtn(); 
+    setStatus(USE_SLOW_MODE ? "Ready — using NVIDIA (Slow Mode)." : "Ready — using OpenRouter.");
+    updateProviderTag();
 
     // Swipe to open sidebar
     let sx2 = 0;
