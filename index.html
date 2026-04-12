@@ -2453,12 +2453,16 @@
             if (isTyping) return;
             isTyping = true;
             while (charQueue.length > 0) {
-                const char = charQueue.shift();
-                textEl.insertBefore(document.createTextNode(char), cursor);
+                const ch = charQueue.shift();
+                textEl.insertBefore(document.createTextNode(ch), cursor);
                 c.scrollTop = c.scrollHeight;
                 
-                // Typing speed: faster if many chars are waiting
-                const delay = charQueue.length > 50 ? 1 : (charQueue.length > 15 ? 5 : 20);
+                // Human-like typing speed with slight randomness
+                let delay;
+                if (charQueue.length > 200) delay = 4;
+                else if (charQueue.length > 80) delay = 8;
+                else if (charQueue.length > 30) delay = 15;
+                else delay = 22 + Math.random() * 12; // 22-34ms feels natural
                 await new Promise(r => setTimeout(r, delay));
             }
             isTyping = false;
@@ -2467,13 +2471,13 @@
         return {
             append(token) {
                 acc += token;
-                for (let c of token) charQueue.push(c);
+                for (const ch of token) charQueue.push(ch);
                 processQueue();
             },
             async finish() {
-                // Wait for typing to finish
-                while (charQueue.length > 0) {
-                    await new Promise(r => setTimeout(r, 10));
+                // Wait for all chars to be typed out
+                while (charQueue.length > 0 || isTyping) {
+                    await new Promise(r => setTimeout(r, 30));
                 }
                 c.scrollTop = c.scrollHeight;
                 cursor.remove();
@@ -2635,14 +2639,19 @@
                 body: JSON.stringify({ q: query }),
             });
             if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                console.error('Search error:', err);
+                const errBody = await res.json().catch(() => ({}));
+                const errMsg = errBody.error || `Search failed (HTTP ${res.status})`;
+                console.error('Search error:', errMsg, errBody);
+                toast(`⚠️ ${errMsg}`);
+                setNotice(errMsg, true);
                 return null;
             }
             const data = await res.json();
             return data;
         } catch (err) {
             console.error('Search fetch error:', err);
+            toast('⚠️ Web search unavailable');
+            setNotice('Web search request failed. Check SERPER_API_KEY.', true);
             return null;
         }
     }
@@ -2746,10 +2755,10 @@
         // Manual search mode (user clicked the search button)
         if (S.searchEnabled) {
             searchQuery = prompt;
-            // Removed S.searchEnabled = false; to keep it on as requested
+            // Keep S.searchEnabled on — user controls it manually
+            toast('🔍 Searching the web...');
         } else {
             // Auto-search: let AI decide if search is needed
-            setStatus('Analyzing query...');
             searchQuery = await shouldAutoSearch(prompt, chat.messages);
         }
 
