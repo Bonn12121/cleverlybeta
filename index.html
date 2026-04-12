@@ -9,6 +9,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Markdown & LaTeX Parsers -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
     <style>
         /* ═══════════════════════════════════════════
            CLEVERLY — Premium Design System
@@ -1687,6 +1693,60 @@
             color: var(--accent);
             background: var(--accent-muted);
         }
+
+        /* ══════════════════════════════════════
+           MARKDOWN & MATH STYLES
+           ══════════════════════════════════════ */
+        .msg-text p { margin-bottom: 0.7em; }
+        .msg-text p:last-child { margin-bottom: 0; }
+        .msg-text h1, .msg-text h2, .msg-text h3, .msg-text h4 { margin: 1em 0 0.5em; color: var(--text-primary); font-weight: 600; }
+        .msg-text h1 { font-size: 1.4em; }
+        .msg-text h2 { font-size: 1.25em; }
+        .msg-text h3 { font-size: 1.15em; }
+        .msg-text strong { color: var(--text-primary); font-weight: 700; }
+        .msg-text em { font-style: italic; }
+        .msg-text ul, .msg-text ol { margin-bottom: 0.7em; padding-left: 1.5em; }
+        .msg-text li { margin-bottom: 0.25em; }
+        
+        .msg-text code { 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background: rgba(255,255,255,0.08); 
+            padding: 0.15em 0.3em; 
+            border-radius: 4px; 
+            font-size: 0.85em; 
+            color: var(--accent-bright);
+        }
+        .msg-text pre { 
+            background: var(--bg-primary); 
+            padding: 1em; 
+            border-radius: 8px; 
+            overflow-x: auto; 
+            margin-bottom: 0.7em; 
+            border: 1px solid var(--border-default); 
+        }
+        .msg-text pre code { 
+            background: transparent; 
+            padding: 0; 
+            border-radius: 0; 
+            font-size: 0.85em; 
+            color: var(--text-primary);
+        }
+        .msg-text blockquote { 
+            border-left: 4px solid var(--indigo); 
+            padding-left: 1em; 
+            color: var(--text-secondary); 
+            margin-bottom: 0.7em; 
+            margin-left: 0; 
+            background: var(--indigo-muted);
+            padding: 0.5em 1em;
+            border-radius: 0 8px 8px 0;
+        }
+        .msg-text a { color: var(--accent); text-decoration: none; }
+        .msg-text a:hover { text-decoration: underline; }
+        
+        /* KaTeX overrides */
+        .katex-display { margin: 0.5em 0; overflow-x: auto; overflow-y: hidden; }
+        .msg-text .katex { font-size: 1.05em; }
     </style>
 </head>
 
@@ -2011,7 +2071,6 @@
         try { localStorage.setItem("cleverly_chats", JSON.stringify(S.chats)); } catch {}
     }
 
-    // ── Toast ──
     let toastT;
     function toast(msg) {
         const el = document.getElementById("toastBar");
@@ -2019,6 +2078,45 @@
         el.classList.add("show");
         clearTimeout(toastT);
         toastT = setTimeout(() => el.classList.remove("show"), 2500);
+    }
+    
+    // ── Markdown/LaTeX Renderer ──
+    function renderMarkdown(text) {
+        if (typeof marked === 'undefined') return esc(text);
+        
+        // Protect LaTeX blocks from marked by temporarily replacing them
+        let mathBlocks = [];
+        let t = text.replace(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g, (match) => {
+            mathBlocks.push(match);
+            return `%%%MATH_BLOCK_${mathBlocks.length - 1}%%%`;
+        });
+        t = t.replace(/(\$[\s\S]*?\$|\\\([\s\S]*?\\\))/g, (match) => {
+            mathBlocks.push(match);
+            return `%%%MATH_INLINE_${mathBlocks.length - 1}%%%`;
+        });
+        
+        // Parse markdown
+        let html = marked.parse(t, { breaks: true });
+        
+        // Restore math
+        html = html.replace(/%%%MATH_(BLOCK|INLINE)_(\d+)%%%/g, (match, type, i) => {
+            return mathBlocks[i];
+        });
+        return html;
+    }
+
+    function applyMath(el) {
+        if (typeof renderMathInElement !== 'undefined') {
+            renderMathInElement(el, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '\\[', right: '\\]', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false}
+                ],
+                throwOnError: false
+            });
+        }
     }
 
     // ── Model ──
@@ -2379,7 +2477,7 @@
             <div class="msg-avatar">${avatarIcon}</div>
             <div class="msg-body">
                 <div class="msg-author">${role === "user" ? "You" : "Cleverly"}</div>
-                <div class="msg-text">${esc(content)}</div>
+                <div class="msg-text">${role === "user" ? esc(content) : renderMarkdown(content)}</div>
                 ${controls}
             </div>`;
 
@@ -2389,8 +2487,14 @@
         }
 
         wrap.appendChild(row);
+        
+        const textContainer = row.querySelector(".msg-text");
+        if (role === "assistant") {
+            applyMath(textContainer);
+        }
+        
         if (scroll) document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight;
-        return row.querySelector(".msg-text");
+        return textContainer;
     }
 
     function wireActions(row, content, idx) {
@@ -2444,25 +2548,33 @@
         c.scrollTop = c.scrollHeight;
 
         const textEl = row.querySelector(".msg-text");
-        const cursor = textEl.querySelector(".typing-cursor");
+        let cursor = textEl.querySelector(".typing-cursor");
         let acc = "";
         let charQueue = [];
         let isTyping = false;
+        let rawAcc = "";
 
         async function processQueue() {
             if (isTyping) return;
             isTyping = true;
             while (charQueue.length > 0) {
-                const ch = charQueue.shift();
-                textEl.insertBefore(document.createTextNode(ch), cursor);
+                // If backlog is large, process short chunks to keep up smoothly while parsing markdown
+                const chunkSz = charQueue.length > 80 ? 5 : (charQueue.length > 30 ? 2 : 1);
+                const chars = charQueue.splice(0, chunkSz).join('');
+                rawAcc += chars;
+                
+                textEl.innerHTML = renderMarkdown(rawAcc) + '<span class="typing-cursor"></span>';
+                cursor = textEl.querySelector('.typing-cursor');
+                applyMath(textEl);
+                
                 c.scrollTop = c.scrollHeight;
                 
                 // Human-like typing speed with slight randomness
                 let delay;
-                if (charQueue.length > 200) delay = 4;
-                else if (charQueue.length > 80) delay = 8;
-                else if (charQueue.length > 30) delay = 15;
-                else delay = 22 + Math.random() * 12; // 22-34ms feels natural
+                if (charQueue.length > 200) delay = 2;
+                else if (charQueue.length > 80) delay = 6;
+                else if (charQueue.length > 30) delay = 12;
+                else delay = 18 + Math.random() * 10; // 18-28ms feels natural
                 await new Promise(r => setTimeout(r, delay));
             }
             isTyping = false;
