@@ -1497,6 +1497,64 @@
             .composer { padding: 8px 12px 10px; }
             .input-hints { display: none; }
         }
+
+        /* ── Dynamic Themes ── */
+        body.theme-ocean {
+            background: url('ocean.png') center/cover no-repeat fixed;
+            --bg-primary: rgba(8,8,12,0.45);
+            --bg-secondary: rgba(14,14,20,0.65);
+            --bg-tertiary: rgba(20,20,30,0.7);
+            --bg-elevated: rgba(26,26,40,0.7);
+            --bg-glass: rgba(14, 14, 22, 0.4);
+            --bg-card: rgba(17,17,32,0.5);
+            --border-subtle: rgba(255,255,255,0.08);
+        }
+        body.theme-sunset {
+            background: url('sunset.png') center/cover no-repeat fixed;
+            --bg-primary: rgba(12,8,8,0.45);
+            --bg-secondary: rgba(20,12,12,0.65);
+            --bg-tertiary: rgba(30,18,18,0.7);
+            --bg-elevated: rgba(40,24,24,0.7);
+            --bg-glass: rgba(22, 14, 14, 0.4);
+            --bg-card: rgba(32,17,17,0.5);
+            --border-subtle: rgba(255,255,255,0.08);
+            --accent: #f97316;
+            --accent-secondary: #f59e0b;
+        }
+        body.theme-cyberpunk {
+            --bg-primary: #120422;
+            --bg-secondary: #1a0b2e;
+            --bg-tertiary: #24113b;
+            --bg-elevated: #2f164c;
+            --bg-hover: #381b5c;
+            --bg-active: #472175;
+            --bg-card: #1d0936;
+            --bg-glass: rgba(26, 11, 46, 0.72);
+            --accent: #ff00ff;
+            --accent-secondary: #00ffff;
+            --accent-muted: rgba(255,0,255,0.15);
+            --border-subtle: rgba(255,0,255,0.12);
+            --border-default: rgba(255,0,255,0.2);
+            --border-hover: rgba(255,0,255,0.3);
+            --indigo: #00ffff;
+        }
+        body.theme-emerald {
+            --bg-primary: #061810;
+            --bg-secondary: #0a2418;
+            --bg-tertiary: #103322;
+            --bg-elevated: #16422d;
+            --bg-hover: #1e5239;
+            --bg-active: #2a6a4c;
+            --bg-card: #0c2c1d;
+            --bg-glass: rgba(10, 36, 24, 0.72);
+            --accent: #22c55e;
+            --accent-secondary: #10b981;
+            --accent-muted: rgba(34,197,94,0.15);
+            --border-subtle: rgba(34,197,94,0.12);
+            --border-default: rgba(34,197,94,0.2);
+            --border-hover: rgba(34,197,94,0.3);
+            --indigo: #34d399;
+        }
     </style>
 </head>
 
@@ -1546,10 +1604,14 @@
                 </select>
             </div>
             <div class="form-group">
-                <div class="form-row">
-                    <span class="form-row-label">Dark Mode</span>
-                    <div class="switch on" id="darkModeSwitch"></div>
-                </div>
+                <label class="form-label">App Theme</label>
+                <select id="appThemeSelect">
+                    <option value="midnight">Midnight (Default)</option>
+                    <option value="ocean">Ocean Landscape</option>
+                    <option value="sunset">Sunset Landscape</option>
+                    <option value="cyberpunk">Cyberpunk Neon</option>
+                    <option value="emerald">Emerald Forest</option>
+                </select>
             </div>
             <button class="btn-save" id="saveSettingsBtn" style="margin-bottom: 8px;">Save Changes</button>
             <button id="restartSetupBtn" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-subtle); background: transparent; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
@@ -2570,6 +2632,7 @@
         document.getElementById("apiKeyInput").value = OR_API_KEY;
         document.getElementById("apiKeyInput").placeholder = "sk-or-v1-…";
         document.getElementById("aiToneSelect").value = localStorage.getItem("cleverly_tone") || "friendly";
+        document.getElementById("appThemeSelect").value = localStorage.getItem("cleverly_theme") || "midnight";
         closeSidebar();
     });
     document.getElementById("closeSettings").addEventListener("click", () => document.getElementById("settingsModal").classList.remove("open"));
@@ -2584,11 +2647,16 @@
             if (typeof updateProviderTag === 'function') updateProviderTag();
         }
         localStorage.setItem("cleverly_tone", document.getElementById("aiToneSelect").value);
+        
+        const selectedTheme = document.getElementById("appThemeSelect").value;
+        localStorage.setItem("cleverly_theme", selectedTheme);
+        document.body.className = selectedTheme !== "midnight" ? `theme-${selectedTheme}` : "";
+
         document.getElementById("settingsModal").classList.remove("open");
         toast("Settings saved"); 
         setStatus(USE_SLOW_MODE ? "Ready — using NVIDIA (Slow Mode)." : "Ready — using OpenRouter.");
     });
-    document.getElementById("darkModeSwitch").addEventListener("click", function() { this.classList.toggle("on"); toast(this.classList.contains("on") ? "Dark mode on" : "Light mode coming soon"); });
+    
     document.getElementById("settingsModal").addEventListener("click", e => { if (e.target.id === "settingsModal") document.getElementById("settingsModal").classList.remove("open"); });
 
     document.getElementById("restartSetupBtn")?.addEventListener("click", () => {
@@ -2673,6 +2741,9 @@
     });
 
     // ── Init ──
+    const initTheme = localStorage.getItem("cleverly_theme") || "midnight";
+    if (initTheme !== "midnight") document.body.className = `theme-${initTheme}`;
+
     if (S.chats.length) { S.activeId = S.chats[0].id; document.getElementById("activeChatTitle").textContent = S.chats[0].title; }
     else newChat();
 
