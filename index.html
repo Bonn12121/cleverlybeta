@@ -1841,6 +1841,12 @@
         "meta-llama/llama-3.2-3b:free"
     ];
 
+    const ALL_SLOW = [
+        "nvidia/nemotron-3-super-120b-a12b",
+        "qwen/qwen3.5-122b-a10b",
+        "qwen/qwen3-coder-480b-a35b-instruct"
+    ];
+
     const TONES = {
         friendly: "You are Cleverly, a warm, witty, and helpful AI assistant. Keep answers concise but friendly.",
         professional: "You are Cleverly, a professional and precise AI assistant. Provide clear, well-structured answers.",
@@ -1888,7 +1894,8 @@
     }
 
     function liveFallbacks(chosen) {
-        return ALL_FREE.filter(m => m !== chosen && !deadModels.has(m));
+        const pool = USE_SLOW_MODE ? ALL_SLOW : ALL_FREE;
+        return pool.filter(m => m !== chosen && !deadModels.has(m));
     }
 
     function markDead(model) {
@@ -2355,7 +2362,20 @@
         
         const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
         const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
-        const reqModel = USE_SLOW_MODE ? "meta/llama-3.1-405b-instruct" : model;
+        
+        let payload;
+        
+        if (USE_SLOW_MODE) {
+            if (model === "nvidia/nemotron-3-super-120b-a12b") {
+                payload = { model, messages, temperature: 1, top_p: 0.95, max_tokens: 16384, reasoning_budget: 16384, chat_template_kwargs: {"enable_thinking":true}, stream: true };
+            } else if (model === "qwen/qwen3.5-122b-a10b") {
+                payload = { model, messages, temperature: 0.60, top_p: 0.95, max_tokens: 16384, chat_template_kwargs: {"enable_thinking":true}, stream: true };
+            } else {
+                payload = { model: "qwen/qwen3-coder-480b-a35b-instruct", messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
+            }
+        } else {
+            payload = { model, messages, max_tokens: 16384, temperature: 1.00, top_p: 0.95, stream: true, chat_template_kwargs: {"enable_thinking":true} };
+        }
 
         const res = await fetch(endpoint, {
             method: "POST",
@@ -2365,7 +2385,7 @@
                 "HTTP-Referer": window.location.origin, 
                 "X-Title": "Cleverly"
             },
-            body: JSON.stringify({ model: reqModel, messages, max_tokens: 16384, temperature: 1.00, top_p: 0.95, stream: true, chat_template_kwargs: {"enable_thinking":true} }),
+            body: JSON.stringify(payload),
             signal: abortCtrl.signal,
         });
 
@@ -2478,9 +2498,10 @@
         }
 
         if (lastErr) {
+            const pool = USE_SLOW_MODE ? ALL_SLOW : ALL_FREE;
             const hint = lastErr.isAuthError ? "API key rejected. Check settings."
-                : ALL_FREE.filter(m => !deadModels.has(m)).length === 0 ? "All free models are down. Try again later."
-                : `${ALL_FREE.filter(m => !deadModels.has(m)).length} model(s) still available — switch model and retry.`;
+                : pool.filter(m => !deadModels.has(m)).length === 0 ? "All models are down. Try again later."
+                : `${pool.filter(m => !deadModels.has(m)).length} model(s) still available — switch model and retry.`;
             appendMsg("assistant", `Could not get a response.\n\n${lastErr.message}\n\n${hint}`);
             setNotice(lastErr.message, true); setStatus("Error");
             if (chat.messages.at(-1)?.role === "user") { chat.messages.pop(); save(); }
@@ -2696,8 +2717,11 @@
         const wrap = document.getElementById("modelDropdown");
         if(wrap) {
             if (USE_SLOW_MODE) {
-                wrap.innerHTML = `<button class="model-option active" data-value="auto">Auto<span class="check-mark"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></button>`;
-                selectModel("auto");
+                wrap.innerHTML = `
+                            <button class="model-option active" data-value="nvidia/nemotron-3-super-120b-a12b">🚀 Max<span class="check-mark"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></button>
+                            <button class="model-option" data-value="qwen/qwen3.5-122b-a10b">⚡ Pro<span class="check-mark"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></button>
+                            <button class="model-option" data-value="qwen/qwen3-coder-480b-a35b-instruct">💨 Lite<span class="check-mark"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></button>`;
+                selectModel("nvidia/nemotron-3-super-120b-a12b");
             } else {
                 wrap.innerHTML = `
                             <button class="model-option active" data-value="meta-llama/llama-3.3-70b-instruct:free">✨ Llama 3.3 70B Instruct (Free)<span class="check-mark"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span></button>
