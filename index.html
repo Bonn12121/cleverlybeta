@@ -2849,11 +2849,65 @@
             return null;
         }
     }
+    // AI auto-moderation: dynamically determine if the input is dangerous
+    async function isHarmful(prompt) {
+        const lower = prompt.toLowerCase();
+        // Skip AI check for basic safe interactions
+        if (lower.length < 3 || /^(hi|hello|hey|thanks|yes|no|ok|sure|got it)$/.test(lower.trim())) return false;
+
+        const checkModel = USE_SLOW_MODE ? ALL_SLOW[ALL_SLOW.length - 1] : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
+        try {
+            const checkMessages = [
+                { role: "system", content: `You are a safety classification AI. Determine if the user's message is asking for extremely harmful, dangerous, or strictly illegal information (e.g., suicide, building explosives, hiring a hitman, manufacturing illegal drugs). Respond with ONLY a JSON object: {"harmful": true} if it violates safety policies, or {"harmful": false} if it is safe.\nNo other text.` },
+                { role: "user", content: prompt }
+            ];
+
+            const endpoint = USE_SLOW_MODE ? "/api/completions" : "https://openrouter.ai/api/v1/chat/completions";
+            const authKey = USE_SLOW_MODE ? NV_DEFAULT_KEY : OR_API_KEY;
+
+            const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${authKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": window.location.origin,
+                    "X-Title": "Cleverly"
+                },
+                body: JSON.stringify({
+                    model: checkModel,
+                    messages: checkMessages,
+                    max_tokens: 20,
+                    temperature: 0,
+                    stream: false
+                }),
+            });
+
+            if (!res.ok) return false;
+            const data = await res.json();
+            const content = data.choices?.[0]?.message?.content?.trim();
+            if (!content) return false;
+
+            const jsonMatch = content.match(/\{[^}]+\}/);
+            if (!jsonMatch) return false;
+            const parsed = JSON.parse(jsonMatch[0]);
+            return parsed.harmful === true;
+        } catch (err) {
+            console.error('Moderation detection error:', err);
+            return false;
+        }
+    }
 
     // ── Send ──
     async function doSend(prompt, chatId) {
         let isViolation = false;
-        if (/(how to die|build a bomb|make a bomb|kill myself|suicide|make explosives|hire a hitman|illegal drug)/i.test(prompt)) {
+        
+        setStatus('Checking safety...');
+        S.streaming = true;
+        syncSendBtn(); 
+
+        const isHarmfulCheck = await isHarmful(prompt);
+
+        if (isHarmfulCheck) {
             prompt = "#############\n\n**Note:** Violation Question";
             isViolation = true;
         }
