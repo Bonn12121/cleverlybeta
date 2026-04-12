@@ -2808,7 +2808,7 @@
             let ok = false;
             try {
                 await callAPI(model, rawMsgs, t => node.append(t));
-                const answer = node.finish();
+                const answer = await node.finish();
                 if (!answer.trim()) { node.remove(); markDead(model); lastErr = new Error("Empty response — model may be unavailable."); attempt++; continue; }
                 chat.messages.push({ role: "assistant", content: answer });
                 save(); renderSidebar(); startCooldown(); showRetry("");
@@ -2817,7 +2817,7 @@
                 lastErr = null; ok = true;
             } catch (err) {
                 if (err.name === "AbortError") {
-                    const partial = node.finish();
+                    const partial = await node.finish();
                     if (partial.trim()) { chat.messages.push({ role: "assistant", content: partial }); save(); } else node.remove();
                     setStatus("Stopped"); setNotice("Generation stopped."); lastErr = null; ok = true;
                 } else {
