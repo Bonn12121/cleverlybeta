@@ -71,43 +71,50 @@ app.post('/api/completions', async (req, res) => {
     }
 });
 
-// Stability AI image generation proxy — SD 3.5 Large
+// NVIDIA NIM image generation proxy — SD 3.5 Large
 app.post('/api/generate-image', async (req, res) => {
-    const STABILITY_KEY = process.env.STABILITY_API_KEY;
-    if (!STABILITY_KEY) return res.status(500).json({ error: 'STABILITY_API_KEY not set in environment' });
+    const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
+    if (!NVIDIA_KEY) return res.status(500).json({ error: 'NVIDIA_API_KEY not set in environment' });
 
-    const { prompt, aspect_ratio, output_format, negative_prompt } = req.body;
+    const { prompt, aspect_ratio, output_format, negative_prompt, cfg_scale, seed, steps } = req.body;
     if (!prompt) return res.status(400).json({ error: "Missing 'prompt' parameter" });
 
     try {
         if (prompt.length > 2000) return res.status(400).json({ error: "Prompt too long" });
-        // Build multipart form-data
-        const formData = new FormData();
-        formData.append('prompt', prompt);
-        formData.append('model', 'sd3.5-large');
-        formData.append('output_format', output_format || 'png');
-        if (aspect_ratio) formData.append('aspect_ratio', aspect_ratio);
-        if (negative_prompt) formData.append('negative_prompt', negative_prompt);
+        
+        // Build JSON payload for NVIDIA NIM API
+        const payload = {
+            prompt,
+            mode: "text-to-image",
+            aspect_ratio: aspect_ratio || "1:1",
+            output_format: output_format || "jpeg",
+            cfg_scale: cfg_scale ?? 5,
+            seed: seed ?? 0,
+            steps: steps ?? 50,
+        };
 
-        const stabilityRes = await fetch('https://api.stability.ai/v2beta/stable-image/generate/sd3', {
-            method: 'POST',
+        if (negative_prompt) payload.negative_prompt = negative_prompt;
+
+        const nvidiaRes = await fetch("https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3-5-large", {
+            method: "POST",
             headers: {
-                'Authorization': `Bearer ${STABILITY_KEY}`,
-                'Accept': 'application/json',
+                "Authorization": `Bearer ${NVIDIA_KEY}`,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
             },
-            body: formData,
+            body: JSON.stringify(payload),
         });
 
-        if (!stabilityRes.ok) {
-            const errText = await stabilityRes.text();
-            console.error('Stability API Error:', stabilityRes.status, errText);
-            return res.status(stabilityRes.status).json({ error: 'Stability API error', message: errText });
+        if (!nvidiaRes.ok) {
+            const errText = await nvidiaRes.text();
+            console.error('NVIDIA API Error:', nvidiaRes.status, errText);
+            return res.status(nvidiaRes.status).json({ error: 'NVIDIA API error', message: errText });
         }
 
-        const data = await stabilityRes.json();
+        const data = await nvidiaRes.json();
         res.status(200).json(data);
     } catch (err) {
-        console.error('Stability Proxy Error:', err);
+        console.error('NVIDIA Proxy Error:', err);
         res.status(500).json({ error: 'Image generation proxy error', message: err.message });
     }
 });
