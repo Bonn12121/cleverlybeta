@@ -5,6 +5,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>Cleverly — Premium AI Assistant</title>
+    <!-- Security: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
     <meta name="description"
         content="Cleverly is a premium AI assistant powered by NVIDIA. Chat with the best AI models instantly.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,15 +15,31 @@
         rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <!-- Markdown & LaTeX Parsers -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@5.0.3/lib/index.umd.js"></script>
-    <!-- Syntax Highlighting -->
+    <!-- Markdown & LaTeX Parsers (pinned versions + SRI) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
+        integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
+        crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
+        integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn"
+        crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"
+        integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1.7/lib/index.umd.js"
+        integrity="sha384-XxGEZv9F7hWupeJBnhRjriQyXeFcyOlXo3zlrowvdAwLwShaBaRBTAOUaFCxfO7J"
+        crossorigin="anonymous"></script>
+    <!-- Syntax Highlighting (pinned + SRI) -->
     <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
-    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+        href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css"
+        integrity="sha384-oaMLBGEzBOJx3UHwac0cVndtX5fxGQIfnAeFZ35RTgqPcYlbprH9o9PUV/F8Le07"
+        crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"
+        integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp"
+        crossorigin="anonymous"></script>
+    <!-- DOMPurify — XSS sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js"
+        integrity="sha384-pcBjnGbkyKeOXaoFkmJiuR9E08/6gkmus6/Strimnxtl3uk0Hx23v345pWyC/MMr"
+        crossorigin="anonymous"></script>
     <style>
         /* ═══════════════════════════════════════════
            CLEVERLY — Premium Design System
@@ -1386,9 +1404,135 @@
             animation: pulse 1s ease-in-out infinite;
         }
 
+        .strip-btn.imggen-active {
+            color: #c084fc;
+            background: rgba(192, 132, 252, 0.1);
+            box-shadow: 0 0 12px rgba(192, 132, 252, 0.15);
+        }
+
+        .strip-btn.imggen-active:hover {
+            color: #d8b4fe;
+            background: rgba(192, 132, 252, 0.15);
+        }
+
         .strip-btn .icon {
             width: 18px;
             height: 18px;
+        }
+
+        /* Image generation result card */
+        .imggen-card {
+            position: relative;
+            border-radius: var(--radius-l);
+            overflow: hidden;
+            border: 1px solid var(--border-default);
+            background: var(--bg-card);
+            margin-top: 8px;
+        }
+
+        .imggen-card img {
+            width: 100%;
+            max-height: 512px;
+            object-fit: contain;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .imggen-card img:hover {
+            transform: scale(1.01);
+        }
+
+        .imggen-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+        }
+
+        .imggen-card-label {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .imggen-card-label .model-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, rgba(192, 132, 252, 0.12), rgba(139, 92, 246, 0.12));
+            border: 1px solid rgba(192, 132, 252, 0.15);
+            border-radius: var(--radius-pill);
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #c084fc;
+        }
+
+        .imggen-download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-pill);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 550;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .imggen-download-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .imggen-download-btn .icon {
+            width: 13px;
+            height: 13px;
+        }
+
+        /* Image generation loading spinner */
+        .imggen-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 48px 24px;
+            border-radius: var(--radius-l);
+            border: 1px solid rgba(192, 132, 252, 0.12);
+            background: linear-gradient(135deg, rgba(192, 132, 252, 0.04), rgba(139, 92, 246, 0.04));
+            margin-top: 8px;
+        }
+
+        .imggen-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(192, 132, 252, 0.15);
+            border-top-color: #c084fc;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .imggen-loading-text {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            font-weight: 500;
         }
 
         #userInput {
@@ -3582,6 +3726,14 @@
                                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
                             </svg></span>
                     </button>
+                    <button class="strip-btn" id="imgGenBtn" title="Generate image">
+                        <span class="icon"><svg viewBox="0 0 24 24">
+                                <path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                <circle cx="8.5" cy="9.5" r="1.5" />
+                                <path d="M21 15l-5-5L5 21" />
+                                <path d="M14 3l3 3-3 3" stroke-width="1.5" />
+                            </svg></span>
+                    </button>
                     <button class="strip-btn" id="voiceBtn" title="Voice input">
                         <span class="icon"><svg viewBox="0 0 24 24">
                                 <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
@@ -3652,9 +3804,9 @@
             return `<span class="icon ${cls}">${ICONS[name] || ''}</span>`;
         }
 
-        // ── State ──
-        let OR_API_KEY = sessionStorage.getItem("or_api_key") || "";
-        let USE_SLOW_MODE = sessionStorage.getItem("use_slow_mode") === "true";
+        // ── State ── (keys kept in memory only — never persisted to storage)
+        let OR_API_KEY = "";
+        let USE_SLOW_MODE = false;
 
         const COOLDOWN = 10;
         let abortCtrl = null;
@@ -3694,6 +3846,7 @@
             cdLeft: 0,
             files: [],
             searchEnabled: false,
+            imgGenEnabled: false,
         };
 
         // ── Utilities ──
@@ -3828,24 +3981,30 @@
                 const existing = canvas.querySelector('.code-canvas-preview');
                 if (existing) { existing.remove(); return; }
 
+                // Security: confirm before executing untrusted code (Vuln #9)
+                if (!confirm('⚠️ This will execute the code in a sandboxed preview.\n\nOnly run code you trust. Continue?')) return;
+
                 const preview = document.createElement('div');
                 preview.className = 'code-canvas-preview';
                 const iframe = document.createElement('iframe');
-                iframe.sandbox = 'allow-scripts allow-same-origin';
+                // Security: removed allow-same-origin to prevent sandbox escape (Vuln #2)
+                iframe.sandbox = 'allow-scripts';
                 preview.appendChild(iframe);
                 canvas.appendChild(preview);
 
-                // Write HTML into iframe
-                const doc = iframe.contentDocument || iframe.contentWindow.document;
-                doc.open();
-                doc.write(code);
-                doc.close();
+                // Write HTML into iframe via srcdoc (safe with sandbox)
+                iframe.srcdoc = code;
             }
         });
 
         function renderMarkdown(text) {
             if (typeof marked === 'undefined') return esc(text);
-            return marked.parse(text, { breaks: true });
+            const raw = marked.parse(text, { breaks: true });
+            // Security: sanitize HTML output to prevent XSS (Vuln #1)
+            if (typeof DOMPurify !== 'undefined') {
+                return DOMPurify.sanitize(raw, { ADD_TAGS: ['iframe'], ADD_ATTR: ['target', 'rel', 'loading', 'sandbox', 'srcdoc'] });
+            }
+            return raw;
         }
 
         // ── Model ──
@@ -3994,12 +4153,29 @@
         function renameChat(id) {
             const c = S.chats.find(x => x.id === id);
             if (!c) return;
-            const t = prompt("Rename:", c.title);
-            if (t?.trim()) {
-                c.title = t.trim();
-                save(); renderSidebar();
-                if (S.activeId === id) document.getElementById("activeChatTitle").textContent = c.title;
+            // Security: replaced prompt() with inline input (Vuln #10)
+            // Fix: find the specific entry using data-id attribute (previously found first global entry)
+            const entry = document.querySelector(`.chat-entry[data-id="${id}"]`);
+            const titleEl = entry?.querySelector('.chat-entry-title');
+            if (!titleEl) return;
+            const inp = document.createElement('input');
+            inp.type = 'text';
+            inp.value = c.title;
+            inp.style.cssText = 'width:100%;background:var(--bg-primary);border:1px solid var(--accent-border);border-radius:6px;color:var(--text-primary);padding:3px 6px;font-size:13px;font-family:inherit;outline:none;';
+            titleEl.replaceWith(inp);
+            inp.focus();
+            inp.select();
+            function commitRename() {
+                const newTitle = inp.value.trim();
+                if (newTitle && newTitle !== c.title) {
+                    c.title = newTitle;
+                    save();
+                    if (S.activeId === id) document.getElementById("activeChatTitle").textContent = c.title;
+                }
+                renderSidebar();
             }
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commitRename(); } if (e.key === 'Escape') renderSidebar(); });
+            inp.addEventListener('blur', commitRename);
         }
 
         // ── Sidebar ──
@@ -4056,6 +4232,7 @@
                 groups[g].forEach(chat => {
                     const d = document.createElement("div");
                     d.className = "chat-entry" + (chat.id === S.activeId ? " active" : "");
+                    d.dataset.id = chat.id; // Add ID for selector support
                     const last = chat.messages[chat.messages.length - 1];
                     const prev = last ? last.content.slice(0, 38) : "Empty conversation";
                     const ic = chatIcon(chat.title);
@@ -4207,8 +4384,9 @@
             if (role === "user" && attachments && attachments.length) {
                 for (const att of attachments) {
                     if (att.type === "image") {
+                        // Security: use data attributes instead of inline onclick (Vuln #4)
                         attachHtml += `<div style="margin-top:10px;">
-                        <img src="${att.data}" alt="${esc(att.name)}" style="max-width:100%; max-height:300px; border-radius:10px; cursor:pointer; border:1px solid var(--border-subtle);" onclick="openLightbox('${att.data.replace(/'/g, "\\'")}', '${esc(att.name).replace(/'/g, "\\'")}')">
+                        <img src="${esc(att.data)}" alt="${esc(att.name)}" style="max-width:100%; max-height:300px; border-radius:10px; cursor:pointer; border:1px solid var(--border-subtle);" data-lightbox-src="${esc(att.data)}" data-lightbox-title="${esc(att.name)}" class="lightbox-trigger">
                         <div style="font-size:11px; color:var(--text-tertiary); margin-top:4px;">${icon('image', 'icon-sm')} ${esc(att.name)}</div>
                     </div>`;
                     } else if (att.type === "text") {
@@ -4308,7 +4486,8 @@
                     const chars = charQueue.splice(0, chunkSz).join('');
                     rawAcc += chars;
 
-                    textEl.innerHTML = renderMarkdown(rawAcc) + '<span class="typing-cursor"></span>';
+                    const contentHtml = renderMarkdown(rawAcc);
+                    textEl.innerHTML = contentHtml + '<span class="typing-cursor"></span>';
                     cursor = textEl.querySelector('.typing-cursor');
 
                     c.scrollTop = c.scrollHeight;
@@ -4545,7 +4724,8 @@
                 const src = esc(img.imageUrl || img.thumbnailUrl || '');
                 const title = esc(img.title || '');
                 if (!src) return;
-                html += `<div class="search-img-card" onclick="openLightbox('${src.replace(/'/g, "\\'")}', '${title.replace(/'/g, "\\'")}')">
+                // Security: use data attributes instead of inline onclick (Vuln #4)
+                html += `<div class="search-img-card lightbox-trigger" data-lightbox-src="${src}" data-lightbox-title="${title}">
                 <img src="${src}" alt="${title}" loading="lazy" onerror="this.parentElement.remove()">
                 <div class="search-img-label">${title}</div>
             </div>`;
@@ -4557,10 +4737,27 @@
         function openLightbox(src, caption) {
             const lb = document.createElement('div');
             lb.className = 'img-lightbox';
-            lb.innerHTML = `<img src="${src}" alt="${caption || ''}"><div class="img-lightbox-caption">${caption || ''}</div>`;
+            // Security: build DOM elements instead of innerHTML with unsanitized data (Vuln #4)
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = caption || '';
+            const cap = document.createElement('div');
+            cap.className = 'img-lightbox-caption';
+            cap.textContent = caption || '';
+            lb.appendChild(img);
+            lb.appendChild(cap);
             lb.addEventListener('click', () => lb.remove());
             document.body.appendChild(lb);
         }
+
+        // Security: delegated lightbox click handler (Vuln #4 — no inline onclick)
+        document.addEventListener('click', function(e) {
+            const trigger = e.target.closest('.lightbox-trigger');
+            if (!trigger) return;
+            const src = trigger.dataset.lightboxSrc;
+            const title = trigger.dataset.lightboxTitle || '';
+            if (src) openLightbox(src, title);
+        });
 
         function formatSearchContext(data) {
             if (!data) return null;
@@ -4827,7 +5024,120 @@
 
         function stopGen() { abortCtrl?.abort(); }
 
-        // ── Send button ──
+        // ── Image Generation ──
+        async function doImageGeneration(prompt, chatId) {
+            S.streaming = true; syncSendBtn(); setNotice("");
+
+            let chat = S.chats.find(c => c.id === chatId);
+            if (!chat) { chat = newChat(titleFromPrompt(prompt)); chatId = chat.id; }
+
+            if (!chat.messages.length) {
+                chat.title = titleFromPrompt(prompt);
+                document.getElementById("activeChatTitle").textContent = chat.title;
+                renderSidebar();
+            }
+
+            if (S.activeId !== chatId) { S.activeId = chatId; renderSidebar(); renderMessages(); }
+
+            // Store user message
+            chat.messages.push({ role: "user", content: prompt });
+            appendMsg("user", prompt, true);
+            save();
+
+            // Show loading indicator
+            const c = document.getElementById("chatContainer");
+            let wrap = c.querySelector(".messages-wrap");
+            const loadingDiv = document.createElement("div");
+            loadingDiv.className = "imggen-loading";
+            loadingDiv.innerHTML = `
+                <div class="imggen-spinner"></div>
+                <div class="imggen-loading-text">🎨 Generating image with SD 3.5 Large…</div>
+            `;
+            if (wrap) { wrap.appendChild(loadingDiv); c.scrollTop = c.scrollHeight; }
+
+            setStatus('🎨 Generating image…');
+
+            try {
+                const res = await fetch('/api/generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        output_format: 'png',
+                        aspect_ratio: '1:1'
+                    }),
+                });
+
+                loadingDiv.remove();
+
+                if (!res.ok) {
+                    let errMsg = `HTTP ${res.status}`;
+                    try { const j = await res.json(); errMsg = j.message || j.error || errMsg; } catch {}
+                    throw new Error(errMsg);
+                }
+
+                const data = await res.json();
+
+                // Stability API returns { image: "base64data", ... } or { artifacts: [{ base64: "..." }] }
+                let base64 = null;
+                if (data.image) {
+                    base64 = data.image;
+                } else if (data.artifacts && data.artifacts.length > 0) {
+                    base64 = data.artifacts[0].base64;
+                }
+
+                if (!base64) throw new Error('No image data in response');
+
+                const imgSrc = `data:image/png;base64,${base64}`;
+                const imgId = 'imggen-' + Date.now();
+
+                // Build the image card HTML
+                const cardHtml = `
+                    <div class="imggen-card">
+                        <img src="${imgSrc}" alt="${esc(prompt)}" id="${imgId}" onclick="window.open(this.src, '_blank')" />
+                        <div class="imggen-card-footer">
+                            <div class="imggen-card-label">
+                                <span class="model-tag">🎨 SD 3.5 Large</span>
+                                ${esc(prompt.length > 60 ? prompt.slice(0, 57) + '…' : prompt)}
+                            </div>
+                            <button class="imggen-download-btn" onclick="(function(){var a=document.createElement('a');a.href='${imgSrc}';a.download='cleverly-${Date.now()}.png';a.click();})()">                                ${icon('file', 'icon-sm')} Download
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Store as assistant message
+                const msgContent = `![Generated Image](${imgSrc})\n\n*Prompt: ${prompt}*`;
+                chat.messages.push({ role: "assistant", content: msgContent });
+                save();
+
+                // Display in chat
+                const row = document.createElement("div");
+                row.className = "msg-row assistant";
+                row.innerHTML = `
+                    <div class="msg-avatar">${icon('bolt')}</div>
+                    <div class="msg-body">
+                        <div class="msg-author">Cleverly</div>
+                        <div class="msg-text">${cardHtml}</div>
+                    </div>
+                `;
+                if (wrap) { wrap.appendChild(row); c.scrollTop = c.scrollHeight; }
+
+                setStatus('Done');
+                renderSidebar();
+                startCooldown();
+            } catch (err) {
+                loadingDiv.remove();
+                appendMsg("assistant", `⚠️ Image generation failed.\n\n${err.message}\n\nMake sure your Stability AI API key is set in the .env file.`);
+                setStatus('Error');
+                setNotice(err.message, true);
+                if (chat.messages.at(-1)?.role === "user") { chat.messages.pop(); save(); }
+            }
+
+            S.streaming = false; abortCtrl = null; syncSendBtn();
+            document.getElementById("userInput").focus();
+        }
+
         function syncSendBtn() {
             const btn = document.getElementById("sendBtn");
             const ta = document.getElementById("userInput");
@@ -4909,6 +5219,15 @@
             const chatId = S.activeId ?? newChat().id;
 
             if (onCooldown() || S.streaming) { enqueue(p, chatId); return; }
+
+            // Image generation mode
+            if (S.imgGenEnabled) {
+                S.imgGenEnabled = false;
+                syncImgGenBtn();
+                await doImageGeneration(p, chatId);
+                return;
+            }
+
             await doSend(p, chatId);
         }
 
@@ -5023,11 +5342,34 @@
         }
         document.getElementById("searchBtn").addEventListener("click", () => {
             S.searchEnabled = !S.searchEnabled;
+            if (S.searchEnabled && S.imgGenEnabled) { S.imgGenEnabled = false; syncImgGenBtn(); }
             syncSearchBtn();
             if (S.searchEnabled) {
                 toast("🔍 Search enabled — your next message will search the web");
             } else {
                 toast("Search disabled");
+            }
+        });
+
+        // Image Generation button
+        function syncImgGenBtn() {
+            const btn = document.getElementById("imgGenBtn");
+            if (S.imgGenEnabled) {
+                btn.classList.add("imggen-active");
+                btn.title = "Image gen ON — describe your image";
+            } else {
+                btn.classList.remove("imggen-active");
+                btn.title = "Generate image";
+            }
+        }
+        document.getElementById("imgGenBtn").addEventListener("click", () => {
+            S.imgGenEnabled = !S.imgGenEnabled;
+            if (S.imgGenEnabled && S.searchEnabled) { S.searchEnabled = false; syncSearchBtn(); }
+            syncImgGenBtn();
+            if (S.imgGenEnabled) {
+                toast("🎨 Image generation ON — describe the image you want");
+            } else {
+                toast("Image generation OFF");
             }
         });
 
@@ -5045,10 +5387,9 @@
             const k = document.getElementById("apiKeyInput").value.trim();
             if (k) {
                 OR_API_KEY = k;
-                sessionStorage.setItem("or_api_key", k);
+                // Security: key stays in memory only — not persisted (Vuln #3)
                 deadModels.clear();
                 USE_SLOW_MODE = false;
-                sessionStorage.removeItem("use_slow_mode");
                 if (typeof updateProviderTag === 'function') updateProviderTag();
             }
             localStorage.setItem("cleverly_tone", document.getElementById("aiToneSelect").value);
@@ -5067,8 +5408,7 @@
         document.getElementById("restartSetupBtn")?.addEventListener("click", () => {
             OR_API_KEY = "";
             USE_SLOW_MODE = false;
-            sessionStorage.removeItem("or_api_key");
-            sessionStorage.removeItem("use_slow_mode");
+            // Security: nothing to remove from storage — keys are memory-only (Vuln #3)
 
             document.getElementById("settingsModal").classList.remove("open");
             document.getElementById("setupKeyInput").value = "";
@@ -5126,23 +5466,21 @@
             }
         }
 
-        // Setup
-        if (!USE_SLOW_MODE && (!OR_API_KEY || !OR_API_KEY.startsWith("sk-or-v1-"))) {
-            document.getElementById("setupOverlay").style.display = "flex";
-        }
+        // Setup — always show on fresh page load since keys are memory-only (Vuln #3)
+        document.getElementById("setupOverlay").style.display = "flex";
 
         document.getElementById("setupSaveBtn").addEventListener("click", () => {
             const k = document.getElementById("setupKeyInput").value.trim();
             if (!k.startsWith("sk-or-v1-")) { alert("Key must start with sk-or-v1-"); return; }
-            OR_API_KEY = k; sessionStorage.setItem("or_api_key", k);
-            USE_SLOW_MODE = false; sessionStorage.removeItem("use_slow_mode");
+            OR_API_KEY = k; // Security: memory-only, never persisted (Vuln #3)
+            USE_SLOW_MODE = false;
             document.getElementById("setupOverlay").style.display = "none";
             toast("Key saved — start chatting"); setStatus("Ready — using OpenRouter.");
             updateProviderTag();
         });
 
         document.getElementById("useSlowModeBtn")?.addEventListener("click", () => {
-            USE_SLOW_MODE = true; sessionStorage.setItem("use_slow_mode", "true");
+            USE_SLOW_MODE = true; // Security: memory-only (Vuln #3)
             document.getElementById("setupOverlay").style.display = "none";
             toast("Using slow mode"); setStatus("Ready — using NVIDIA (Slow Mode).");
             updateProviderTag();

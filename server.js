@@ -34,6 +34,12 @@ app.post('/api/completions', async (req, res) => {
     if (!NV_KEY) return res.status(500).json({ error: 'NV_API_KEY not set in environment' });
 
     try {
+        // Security: Server-side file size check (Vuln #8)
+        const payloadSize = JSON.stringify(req.body).length;
+        if (payloadSize > 6000000) { // ~6MB limit for entire payload
+            return res.status(413).json({ error: 'Payload too large', message: 'Attachments and prompt exceed size limit.' });
+        }
+
         const nvidiaRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -62,6 +68,47 @@ app.post('/api/completions', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({ error: 'Proxy error', message: err.message });
         }
+    }
+});
+
+// Stability AI image generation proxy — SD 3.5 Large
+app.post('/api/generate-image', async (req, res) => {
+    const STABILITY_KEY = process.env.STABILITY_API_KEY;
+    if (!STABILITY_KEY) return res.status(500).json({ error: 'STABILITY_API_KEY not set in environment' });
+
+    const { prompt, aspect_ratio, output_format, negative_prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Missing 'prompt' parameter" });
+
+    try {
+        if (prompt.length > 2000) return res.status(400).json({ error: "Prompt too long" });
+        // Build multipart form-data
+        const formData = new FormData();
+        formData.append('prompt', prompt);
+        formData.append('model', 'sd3.5-large');
+        formData.append('output_format', output_format || 'png');
+        if (aspect_ratio) formData.append('aspect_ratio', aspect_ratio);
+        if (negative_prompt) formData.append('negative_prompt', negative_prompt);
+
+        const stabilityRes = await fetch('https://api.stability.ai/v2beta/stable-image/generate/sd3', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${STABILITY_KEY}`,
+                'Accept': 'application/json',
+            },
+            body: formData,
+        });
+
+        if (!stabilityRes.ok) {
+            const errText = await stabilityRes.text();
+            console.error('Stability API Error:', stabilityRes.status, errText);
+            return res.status(stabilityRes.status).json({ error: 'Stability API error', message: errText });
+        }
+
+        const data = await stabilityRes.json();
+        res.status(200).json(data);
+    } catch (err) {
+        console.error('Stability Proxy Error:', err);
+        res.status(500).json({ error: 'Image generation proxy error', message: err.message });
     }
 });
 
