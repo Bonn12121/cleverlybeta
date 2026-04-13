@@ -14,9 +14,9 @@ export async function onRequest(context) {
     });
   }
 
-  const STABILITY_KEY = env.STABILITY_API_KEY;
-  if (!STABILITY_KEY) {
-    return new Response(JSON.stringify({ error: "STABILITY_API_KEY not configured" }), {
+  const NVIDIA_KEY = env.NVIDIA_API_KEY;
+  if (!NVIDIA_KEY) {
+    return new Response(JSON.stringify({ error: "NVIDIA_API_KEY not configured" }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
@@ -24,7 +24,7 @@ export async function onRequest(context) {
 
   try {
     const body = await request.json();
-    const { prompt, aspect_ratio, output_format, negative_prompt } = body;
+    const { prompt, aspect_ratio, output_format, negative_prompt, cfg_scale, seed, steps } = body;
 
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Missing 'prompt' parameter" }), {
@@ -33,32 +33,41 @@ export async function onRequest(context) {
       });
     }
 
-    // Build multipart form-data
-    const formData = new FormData();
-    formData.append("prompt", prompt);
-    formData.append("model", "sd3.5-large");
-    formData.append("output_format", output_format || "png");
-    if (aspect_ratio) formData.append("aspect_ratio", aspect_ratio);
-    if (negative_prompt) formData.append("negative_prompt", negative_prompt);
+    // Build JSON payload for NVIDIA NIM API
+    const payload = {
+      prompt,
+      mode: "text-to-image",
+      aspect_ratio: aspect_ratio || "1:1",
+      output_format: output_format || "jpeg",
+      cfg_scale: cfg_scale ?? 5,
+      seed: seed ?? 0,
+      steps: steps ?? 50,
+    };
 
-    const stabilityRes = await fetch("https://api.stability.ai/v2beta/stable-image/generate/sd3", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${STABILITY_KEY}`,
-        "Accept": "application/json",
-      },
-      body: formData,
-    });
+    if (negative_prompt) payload.negative_prompt = negative_prompt;
 
-    if (!stabilityRes.ok) {
-      const errText = await stabilityRes.text();
-      return new Response(JSON.stringify({ error: "Stability API error", message: errText }), {
-        status: stabilityRes.status,
+    const nvidiaRes = await fetch(
+      "https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3_5-large",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${NVIDIA_KEY}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!nvidiaRes.ok) {
+      const errText = await nvidiaRes.text();
+      return new Response(JSON.stringify({ error: "NVIDIA API error", message: errText }), {
+        status: nvidiaRes.status,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    const data = await stabilityRes.json();
+    const data = await nvidiaRes.json();
 
     return new Response(JSON.stringify(data), {
       status: 200,
