@@ -3290,7 +3290,8 @@
                 API key to chat. Takes 1 minute — no credit card needed.</p>
             <ol class="setup-steps" style="text-align: left;">
                 <li>Go to <a href="https://openrouter.ai" target="_blank" rel="noopener">openrouter.ai</a> and click
-                    <strong>Sign Up</strong> (it's free)</li>
+                    <strong>Sign Up</strong> (it's free)
+                </li>
                 <li>After signing in, click your avatar → <strong>API Keys</strong></li>
                 <li>Click <strong>Create Key</strong>, give it any name, copy it</li>
                 <li>Paste your key below and hit <strong>Start Chatting</strong></li>
@@ -3299,7 +3300,7 @@
             <button class="setup-go" id="setupSaveBtn" style="margin-bottom: 12px;">Start Chatting</button>
             <button class="setup-go" id="useSlowModeBtn"
                 style="background: transparent; color: var(--text-secondary); border: 1px solid var(--border-subtle); box-shadow: none;">No
-                thanks, I'd rather use slow mode.</button>
+                thanks, I'd rather use plug and play.</button>
             <p class="setup-note">🔒 Your key is held <strong>in memory only</strong> — never saved to disk, never sent
                 anywhere except OpenRouter's servers.</p>
         </div>
@@ -4589,11 +4590,11 @@
 
             // Use a lightweight check via the AI itself
             const checkModel = USE_SLOW_MODE ? ALL_SLOW[ALL_SLOW.length - 1] : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
-            
+
             // Strict 4-second timeout so it never blocks the main response
             const searchAbort = new AbortController();
             const searchTimeout = setTimeout(() => searchAbort.abort(), 4000);
-            
+
             try {
                 const checkMessages = [
                     { role: "system", content: `You are a search-intent classifier. Determine if the user's message requires up-to-date web search results to answer properly. Consider if the question is about: current events, real-time data, recent news, specific facts you might not know, weather, stock prices, sports scores, or anything that changes frequently.\n\nRespond with ONLY a JSON object: {"search": true, "query": "optimized search query"} or {"search": false}\nNo other text.` },
@@ -4761,7 +4762,7 @@
             rawMsgs.unshift({ role: "system", content: sysPrompt });
 
             let chosen = getModel();
-            
+
             let useFallback = true;
             if (useMultimodalModel) {
                 chosen = USE_SLOW_MODE ? "qwen/qwen3.5-122b-a10b" : "qwen/qwen-2.5-vl-72b-instruct:free";
