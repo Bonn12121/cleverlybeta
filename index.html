@@ -125,6 +125,19 @@
             height: 100dvh;
             display: flex;
             overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        /* Allow selection in content areas to keep the system usable */
+        .msg-text, #userInput {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
         }
 
         /* Custom scrollbar */
@@ -3420,6 +3433,41 @@
 </head>
 
 <body>
+    <script>
+        // --- Anti-Theft Protection: View Source & DevTools Block ---
+        (function() {
+            // Disable Right-Click (Context Menu)
+            document.addEventListener('contextmenu', e => e.preventDefault());
+
+            // Disable specific keyboard shortcuts
+            document.addEventListener('keydown', e => {
+                // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (DevTools/Console/Inspect)
+                if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67))) {
+                    e.preventDefault();
+                    return false;
+                }
+                // Ctrl+U (View Source)
+                if (e.ctrlKey && e.keyCode === 85) {
+                    e.preventDefault();
+                    return false;
+                }
+                // Ctrl+S (Save Page)
+                if (e.ctrlKey && e.keyCode === 83) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            /**
+             * Infinite debugger loop to trap DevTools inspection.
+             * This runs when DevTools is opened and effectively freezes the inspection experience.
+             */
+            setInterval(() => {
+                (function() { return false; }['constructor']('debugger')['call']());
+                console.clear();
+            }, 1000);
+        })();
+    </script>
 
     <!-- ── Setup ── -->
     <div class="setup-overlay" id="setupOverlay" style="display:none">
