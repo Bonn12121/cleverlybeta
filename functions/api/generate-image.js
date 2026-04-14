@@ -14,7 +14,8 @@ export async function onRequest(context) {
     });
   }
 
-  const NVIDIA_KEY = env.NVIDIA_API_KEY;
+  // Support both key names
+  const NVIDIA_KEY = env.NVIDIA_API_KEY || env.NV_API_KEY;
   if (!NVIDIA_KEY) {
     return new Response(JSON.stringify({ error: "NVIDIA_API_KEY not configured" }), {
       status: 500,
@@ -33,26 +34,12 @@ export async function onRequest(context) {
       });
     }
 
-    // Map aspect ratios to supported height/width
-    // SD 3.5 Large supported: 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280, 1344
-    const ratioMap = {
-      "1:1": { width: 1024, height: 1024 },
-      "16:9": { width: 1344, height: 768 },
-      "9:16": { width: 768, height: 1344 },
-      "4:3": { width: 1216, height: 896 },
-      "3:4": { width: 896, height: 1216 },
-      "21:9": { width: 1344, height: 576 }, // 576 might not be supported, let's stick to docs
-    };
-
-    const dims = ratioMap[aspect_ratio] || ratioMap["1:1"];
-
-    // Build JSON payload for NVIDIA NIM API (SD 3.5 Large spec)
+    // Build JSON payload for NVIDIA NIM API — Optimized for SD 3.5 Large
     const payload = {
       prompt,
-      mode: "base",
-      height: dims.height,
-      width: dims.width,
-      cfg_scale: cfg_scale ?? 3.5, // SD 3.5 default is 3.5
+      aspect_ratio: aspect_ratio || "1:1",
+      output_format: output_format || "jpeg",
+      cfg_scale: cfg_scale ?? 5,
       seed: seed ?? 0,
       steps: steps ?? 50,
     };
@@ -65,7 +52,7 @@ export async function onRequest(context) {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${NVIDIA_KEY}`,
-          "Accept": "application/json", // Required as per docs
+          "Accept": "application/json",
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
@@ -73,9 +60,16 @@ export async function onRequest(context) {
     );
 
     if (!nvidiaRes.ok) {
+      const status = nvidiaRes.status;
       const errText = await nvidiaRes.text();
-      return new Response(JSON.stringify({ error: "NVIDIA API error", message: errText }), {
-        status: nvidiaRes.status,
+      let errorMessage = errText;
+      try {
+        const j = JSON.parse(errText);
+        errorMessage = j.message || j.error?.message || errText;
+      } catch {}
+
+      return new Response(JSON.stringify({ error: "NVIDIA API error", status, message: errorMessage }), {
+        status: status,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }

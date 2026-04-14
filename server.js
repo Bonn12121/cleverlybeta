@@ -73,7 +73,7 @@ app.post('/api/completions', async (req, res) => {
 
 // NVIDIA NIM image generation proxy — SD 3.5 Large
 app.post('/api/generate-image', async (req, res) => {
-    const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
+    const NVIDIA_KEY = process.env.NVIDIA_API_KEY || process.env.NV_API_KEY;
     if (!NVIDIA_KEY) return res.status(500).json({ error: 'NVIDIA_API_KEY not set in environment' });
 
     const { prompt, aspect_ratio, output_format, negative_prompt, cfg_scale, seed, steps } = req.body;
@@ -82,12 +82,11 @@ app.post('/api/generate-image', async (req, res) => {
     try {
         if (prompt.length > 2000) return res.status(400).json({ error: "Prompt too long" });
         
-        // Build JSON payload for NVIDIA NIM API
+        // Build JSON payload for NVIDIA NIM API — Optimized for SD 3.5 Large NIM
         const payload = {
             prompt,
-            mode: "text-to-image",
             aspect_ratio: aspect_ratio || "1:1",
-            output_format: output_format || "jpeg",
+            output_format: output_format || "jpeg", // NIM usually supports jpeg/png
             cfg_scale: cfg_scale ?? 5,
             seed: seed ?? 0,
             steps: steps ?? 50,
@@ -99,19 +98,33 @@ app.post('/api/generate-image', async (req, res) => {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${NVIDIA_KEY}`,
-                "Accept": "application/json",
+                "Accept": "application/json", // Required to get base64 JSON instead of raw binary
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(payload),
         });
 
         if (!nvidiaRes.ok) {
-            const errText = await nvidiaRes.text();
-            console.error('NVIDIA API Error:', nvidiaRes.status, errText);
-            return res.status(nvidiaRes.status).json({ error: 'NVIDIA API error', message: errText });
+            const status = nvidiaRes.status;
+            let errText = await nvidiaRes.text();
+            console.error('NVIDIA API Error:', status, errText);
+            
+            // Handle common NVIDIA error formats
+            let errorMessage = errText;
+            try { 
+                const j = JSON.parse(errText);
+                errorMessage = j.message || j.error?.message || errText;
+            } catch {}
+
+            return res.status(status).json({ 
+                error: 'NVIDIA API error', 
+                status: status,
+                message: errorMessage 
+            });
         }
 
         const data = await nvidiaRes.json();
+        // NVIDIA returns { "image": "base64...", "finish_reason": "...", "seed": ... }
         res.status(200).json(data);
     } catch (err) {
         console.error('NVIDIA Proxy Error:', err);

@@ -5557,7 +5557,15 @@ LANDING PAGE — New User Onboarding Focus
                 startCooldown();
             } catch (err) {
                 loadingDiv.remove();
-                appendMsg("assistant", `⚠️ Image generation failed.\n\n${err.message}\n\nMake sure your Stability AI API key is set in the .env file.`);
+                
+                let hint = "Make sure your NVIDIA_API_KEY is set correctly in the .env file.";
+                if (err.message.includes("401") || err.message.includes("403") || err.message.toLowerCase().includes("auth")) {
+                    hint = "Authentication failed. Please verify your NVIDIA API key in the .env file.";
+                } else if (err.message.includes("404")) {
+                    hint = "The image generation endpoint or model was not found. Please check your configuration.";
+                }
+
+                appendMsg("assistant", `⚠️ Image generation failed.\n\n**Error:** \`${err.message}\`\n\n${hint}`);
                 setStatus('Error');
                 setNotice(err.message, true);
                 if (chat.messages.at(-1)?.role === "user") { chat.messages.pop(); save(); }
