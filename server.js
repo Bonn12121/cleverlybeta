@@ -94,7 +94,7 @@ app.post('/api/generate-image', async (req, res) => {
 
         if (negative_prompt) payload.negative_prompt = negative_prompt;
 
-        const nvidiaRes = await fetch("https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3-5-large", {
+        const nvidiaRes = await fetch("https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3.5-large", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${NVIDIA_KEY}`,

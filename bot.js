@@ -55,7 +55,7 @@ function addToHistory(channelId, role, content) {
 // ── Image generation via NVIDIA ────────────────────────────────────────────────
 async function generateImage(prompt) {
   // Using SD 3.5 Large consistent with the web app
-  const response = await fetch('https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3-5-large', {
+  const response = await fetch('https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3.5-large', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${IMAGE_GEN_NVDA}`,

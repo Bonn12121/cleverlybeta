@@ -47,7 +47,7 @@ export async function onRequest(context) {
     if (negative_prompt) payload.negative_prompt = negative_prompt;
 
     const nvidiaRes = await fetch(
-      "https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3-5-large",
+      "https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3.5-large",
       {
         method: "POST",
         headers: {
