@@ -4914,28 +4914,34 @@ LANDING PAGE — New User Onboarding Focus
             let isTyping = false;
             let rawAcc = "";
 
+            let lastRender = 0;
             async function processQueue() {
                 if (isTyping) return;
                 isTyping = true;
                 while (charQueue.length > 0) {
                     // Bigger chunks + shorter delays = much faster output
-                    const chunkSz = charQueue.length > 120 ? 12 : (charQueue.length > 50 ? 6 : (charQueue.length > 15 ? 3 : 1));
+                    const chunkSz = charQueue.length > 250 ? 25 : (charQueue.length > 120 ? 12 : (charQueue.length > 50 ? 6 : (charQueue.length > 15 ? 3 : 1)));
                     const chars = charQueue.splice(0, chunkSz).join('');
                     rawAcc += chars;
 
-                    const contentHtml = renderMarkdown(rawAcc);
-                    textEl.innerHTML = contentHtml + '<span class="typing-cursor"></span>';
-                    cursor = textEl.querySelector('.typing-cursor');
+                    // Performance optimization: Only re-render Markdown at most every 16ms (60fps)
+                    // unless it's the very last chunk.
+                    const nowTS = performance.now();
+                    if (nowTS - lastRender > 16 || charQueue.length === 0) {
+                        const contentHtml = renderMarkdown(rawAcc);
+                        textEl.innerHTML = contentHtml + '<span class="typing-cursor"></span>';
+                        cursor = textEl.querySelector('.typing-cursor');
+                        c.scrollTop = c.scrollHeight;
+                        lastRender = nowTS;
+                    }
 
-                    c.scrollTop = c.scrollHeight;
-
-                    // Fast but still smooth typing speed
+                    // Dynamic delay: 0ms for large queues
                     let delay;
-                    if (charQueue.length > 300) delay = 1;
-                    else if (charQueue.length > 120) delay = 2;
-                    else if (charQueue.length > 50) delay = 3;
-                    else if (charQueue.length > 15) delay = 5;
-                    else delay = 8 + Math.random() * 6; // 8-14ms
+                    if (charQueue.length > 300) delay = 0; 
+                    else if (charQueue.length > 120) delay = 1;
+                    else if (charQueue.length > 50) delay = 2;
+                    else if (charQueue.length > 15) delay = 4;
+                    else delay = 6 + Math.random() * 6; // 6-12ms
                     await new Promise(r => setTimeout(r, delay));
                 }
                 isTyping = false;
@@ -5227,9 +5233,10 @@ LANDING PAGE — New User Onboarding Focus
             // Use a lightweight check via the AI itself
             const checkModel = USE_SLOW_MODE ? ALL_SLOW[ALL_SLOW.length - 1] : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
 
-            // Strict 4-second timeout so it never blocks the main response
+            // Strict 3-second timeout so it never blocks the main response
             const searchAbort = new AbortController();
-            const searchTimeout = setTimeout(() => searchAbort.abort(), 4000);
+            const searchTimeout = setTimeout(() => searchAbort.abort(), 3000);
+            setStatus('Analyzing intent…');
 
             try {
                 const checkMessages = [
