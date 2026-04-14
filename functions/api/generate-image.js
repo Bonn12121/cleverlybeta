@@ -34,20 +34,19 @@ export async function onRequest(context) {
       });
     }
 
-    // Build JSON payload for NVIDIA NIM API — Optimized for SD 3.5 Large
+    // Build JSON payload for FLUX.2-klein-4b
     const payload = {
       prompt,
-      aspect_ratio: aspect_ratio || "1:1",
-      output_format: output_format || "jpeg",
-      cfg_scale: cfg_scale ?? 5,
+      width: 1024,
+      height: 1024,
       seed: seed ?? 0,
-      steps: steps ?? 50,
+      steps: steps ?? 4,
     };
 
     if (negative_prompt) payload.negative_prompt = negative_prompt;
 
     const nvidiaRes = await fetch(
-      "https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3.5-large",
+      "https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.2-klein-4b",
       {
         method: "POST",
         headers: {

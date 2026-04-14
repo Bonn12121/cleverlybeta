@@ -54,8 +54,8 @@ function addToHistory(channelId, role, content) {
 
 // ── Image generation via NVIDIA ────────────────────────────────────────────────
 async function generateImage(prompt) {
-  // Using SD 3.5 Large consistent with the web app
-  const response = await fetch('https://ai.api.nvidia.com/v1/genai/stabilityai/stable-diffusion-3.5-large', {
+  // Using FLUX.2-klein-4b as requested
+  const response = await fetch('https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.2-klein-4b', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${IMAGE_GEN_NVDA}`,
@@ -64,11 +64,10 @@ async function generateImage(prompt) {
     },
     body: JSON.stringify({
       prompt,
-      cfg_scale: 5,
-      aspect_ratio: '1:1',
+      width: 1024,
+      height: 1024,
       seed: 0,
-      steps: 50,
-      negative_prompt: '',
+      steps: 4,
     }),
   });
 

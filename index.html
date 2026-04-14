@@ -5480,7 +5480,7 @@ LANDING PAGE — New User Onboarding Focus
             loadingDiv.className = "imggen-loading";
             loadingDiv.innerHTML = `
                 <div class="imggen-spinner"></div>
-                <div class="imggen-loading-text">🎨 Generating image with SD 3.5 Large…</div>
+                <div class="imggen-loading-text">🎨 Generating image with FLUX.2-klein-4b…</div>
             `;
             if (wrap) { wrap.appendChild(loadingDiv); c.scrollTop = c.scrollHeight; }
 
@@ -5526,7 +5526,7 @@ LANDING PAGE — New User Onboarding Focus
                         <img src="${imgSrc}" alt="${esc(prompt)}" id="${imgId}" onclick="window.open(this.src, '_blank')" />
                         <div class="imggen-card-footer">
                             <div class="imggen-card-label">
-                                <span class="model-tag">🎨 SD 3.5 Large</span>
+                                <span class="model-tag">🎨 FLUX.2-klein-4b</span>
                                 ${esc(prompt.length > 60 ? prompt.slice(0, 57) + '…' : prompt)}
                             </div>
                             <button class="imggen-download-btn" onclick="(function(){var a=document.createElement('a');a.href='${imgSrc}';a.download='cleverly-${Date.now()}.png';a.click();})()">                                ${icon('file', 'icon-sm')} Download
