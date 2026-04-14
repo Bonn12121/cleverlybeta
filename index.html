@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>Cleverly — Premium AI Assistant</title>
     <!-- Security: Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
     <meta name="description"
         content="Cleverly is a premium AI assistant powered by NVIDIA. Chat with the best AI models instantly.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,8 +21,7 @@
         integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
         crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
-        integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn"
-        crossorigin="anonymous">
+        integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"
         integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx"
         crossorigin="anonymous"></script>
@@ -31,8 +31,7 @@
     <!-- Syntax Highlighting (pinned + SRI) -->
     <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css"
-        integrity="sha384-oaMLBGEzBOJx3UHwac0cVndtX5fxGQIfnAeFZ35RTgqPcYlbprH9o9PUV/F8Le07"
-        crossorigin="anonymous">
+        integrity="sha384-oaMLBGEzBOJx3UHwac0cVndtX5fxGQIfnAeFZ35RTgqPcYlbprH9o9PUV/F8Le07" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"
         integrity="sha384-F/bZzf7p3Joyp5psL90p/p89AZJsndkSoGwRpXcZhleCWhd8SnRuoYo4d0yirjJp"
         crossorigin="anonymous"></script>
@@ -104,6 +103,283 @@
             --shadow-glow: 0 0 20px rgba(0, 212, 255, 0.08);
         }
 
+        /* ═══════════════════════════════════════
+LANDING PAGE — New User Onboarding Focus
+═══════════════════════════════════════ */
+        .landing-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 5000;
+            background: #08080c;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease;
+        }
+
+        .landing-overlay.hidden {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .landing-bg {
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            opacity: 0.65;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(0, 212, 255, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 55%);
+            filter: blur(100px);
+            animation: bgFloat 25s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgFloat {
+            0% {
+                transform: scale(1) translate(0, 0);
+            }
+
+            50% {
+                transform: scale(1.05) translate(15px, -15px);
+            }
+
+            100% {
+                transform: scale(1) translate(-15px, 15px);
+            }
+        }
+
+        .landing-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 740px;
+            width: 100%;
+            z-index: 10;
+            padding: 48px 24px;
+        }
+
+        .landing-logo-wrap {
+            margin-bottom: 36px;
+            animation: logoEntrance 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        @keyframes logoEntrance {
+            0% {
+                opacity: 0;
+                transform: scale(0.85) translateY(20px);
+                filter: blur(8px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        .landing-h1 {
+            font-size: clamp(48px, 8.5vw, 88px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1.05;
+            margin-bottom: 14px;
+            background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, #00d4ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: textFadeUp 0.8s ease 0.3s both;
+        }
+
+        .landing-p {
+            font-size: clamp(16px, 2.1vw, 19px);
+            color: #9d9db5;
+            max-width: 520px;
+            margin-bottom: 40px;
+            line-height: 1.65;
+            animation: textFadeUp 0.8s ease 0.5s both;
+        }
+
+        @keyframes textFadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .landing-button {
+            height: 62px;
+            padding: 0 46px;
+            border-radius: 100px;
+            background: #ffffff;
+            color: #08080c;
+            font-size: 17px;
+            font-weight: 750;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25), 0 0 24px rgba(255, 255, 255, 0.12);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            animation: textFadeUp 0.8s ease 0.7s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .landing-button::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 100px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.4), rgba(99, 102, 241, 0.4));
+            z-index: -1;
+            filter: blur(14px);
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+
+        .landing-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 36px rgba(0, 212, 255, 0.25), 0 0 32px rgba(255, 255, 255, 0.18);
+        }
+
+        .landing-button:hover::after {
+            opacity: 0.7;
+        }
+
+        .landing-button:active {
+            transform: translateY(0) scale(0.97);
+        }
+
+        .landing-trust {
+            margin-top: 12px;
+            font-size: 12.5px;
+            color: #6b6b85;
+            animation: textFadeUp 0.8s ease 0.85s both;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .landing-trust span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .landing-trust svg {
+            width: 12px;
+            height: 12px;
+            stroke: #6b6b85;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-top: 56px;
+            width: 100%;
+            animation: textFadeUp 0.8s ease 0.95s both;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 22px;
+            border-radius: 18px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.35), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(0, 212, 255, 0.22);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.25);
+        }
+
+        .feature-item:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon-box {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(99, 102, 241, 0.08));
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            margin-bottom: 14px;
+        }
+
+        .feature-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #f0f0f5;
+        }
+
+        .feature-desc {
+            font-size: 12.5px;
+            color: #8a8aa5;
+            line-height: 1.5;
+        }
+
+        @media (min-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .feature-item {
+                padding: 16px;
+            }
+
+            .landing-button {
+                height: 54px;
+                padding: 0 32px;
+                font-size: 15px;
+            }
+        }
+
         *,
         *::before,
         *::after {
@@ -133,7 +409,8 @@
         }
 
         /* Allow selection in content areas to keep the system usable */
-        .msg-text, #userInput {
+        .msg-text,
+        #userInput {
             user-select: text;
             -webkit-user-select: text;
             -moz-user-select: text;
@@ -1539,7 +1816,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .imggen-loading-text {
@@ -3435,7 +3714,7 @@
 <body>
     <script>
         // --- Anti-Theft Protection: View Source & DevTools Block ---
-        (function() {
+        (function () {
             // Disable Right-Click (Context Menu)
             document.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -3463,7 +3742,7 @@
              * This runs when DevTools is opened and effectively freezes the inspection experience.
              */
             setInterval(() => {
-                (function() { return false; }['constructor']('debugger')['call']());
+                (function () { return false; }['constructor']('debugger')['call']());
                 console.clear();
             }, 1000);
         })();
@@ -3611,6 +3890,98 @@
                         Translate
                     </div>
                     <div class="prompt-card-desc">Translate text between languages</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Premium Landing Overlay ── -->
+    <div class="landing-overlay" id="landingPage">
+        <div class="landing-bg"></div>
+        <div class="landing-content">
+            <!-- Original Logo Preserved Exactly -->
+            <div class="landing-logo-wrap">
+                <div class="welcome-spark" style="width: 120px; height: 120px; margin: 0 auto;">
+                    <div class="spark-glow"></div>
+                    <div class="spark-ring-2"></div>
+                    <div class="spark-ring"></div>
+                    <div class="spark-core">
+                        <svg viewBox="0 0 48 48" fill="none">
+                            <path d="M24 4L20 20H4L20 28L16 44L24 32L32 44L28 28L44 20H28L24 4Z"
+                                fill="url(#lpSparkGrad)" stroke="url(#lpSparkStroke)" stroke-width="1.5"
+                                stroke-linejoin="round" />
+                            <defs>
+                                <linearGradient id="lpSparkGrad" x1="4" y1="4" x2="44" y2="44">
+                                    <stop offset="0%" stop-color="rgba(0,212,255,0.4)" />
+                                    <stop offset="100%" stop-color="rgba(99,102,241,0.4)" />
+                                </linearGradient>
+                                <linearGradient id="lpSparkStroke" x1="4" y1="4" x2="44" y2="44">
+                                    <stop offset="0%" stop-color="#00d4ff" />
+                                    <stop offset="100%" stop-color="#6366f1" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <h1 class="landing-h1">Cleverly</h1>
+            <p class="landing-p">Experience intelligence like never before. Fast, refined, and effortlessly capable.</p>
+
+            <button class="landing-button" onclick="dismissLanding()">
+                Continue to Cleverly
+                <span class="icon"><svg viewBox="0 0 24 24">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg></span>
+            </button>
+            <div class="landing-trust">
+                <span><svg viewBox="0 0 24 24">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg> Zero setup friction</span>
+                <span><svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg> Free tier available</span>
+                <span><svg viewBox="0 0 24 24">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg> Instant AI access</span>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon-box"><span class="icon"><svg viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg></span></div>
+                    <div class="feature-title">Smart Search</div>
+                    <div class="feature-desc">Real-time web access to provide accurate, up-to-date answers instantly.
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon-box"><span class="icon"><svg viewBox="0 0 24 24">
+                                <path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
+                                <circle cx="8.5" cy="9.5" r="1.5"></circle>
+                                <path d="M21 15l-5-5L5 21"></path>
+                            </svg></span></div>
+                    <div class="feature-title">Image Generation</div>
+                    <div class="feature-desc">Create stunning visuals with Stable Diffusion 3.5 Large integration.</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon-box"><span class="icon"><svg viewBox="0 0 24 24">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg></span></div>
+                    <div class="feature-title">Code Assistant</div>
+                    <div class="feature-desc">Expert-level debugging, explaining, and writing code in any language.
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon-box"><span class="icon"><svg viewBox="0 0 24 24">
+                                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"></path>
+                            </svg></span></div>
+                    <div class="feature-title">Infinite Context</div>
+                    <div class="feature-desc">Optimized for deep conversations and complex multi-step reasoning.</div>
                 </div>
             </div>
         </div>
@@ -3820,6 +4191,16 @@
         /* ═══════════════════════════════════════════
            CLEVERLY — Application Logic
            ═══════════════════════════════════════════ */
+
+        // ── Landing Page Logic ──
+        function dismissLanding() {
+            const lp = document.getElementById("landingPage");
+            lp.classList.add("hidden");
+            // Allow interactions once the overlay is gone
+            setTimeout(() => {
+                lp.style.display = "none";
+            }, 1200);
+        }
 
         // ── SVG icon templates ──
         const ICONS = {
@@ -4799,7 +5180,7 @@
         }
 
         // Security: delegated lightbox click handler (Vuln #4 — no inline onclick)
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const trigger = e.target.closest('.lightbox-trigger');
             if (!trigger) return;
             const src = trigger.dataset.lightboxSrc;
@@ -5120,7 +5501,7 @@
 
                 if (!res.ok) {
                     let errMsg = `HTTP ${res.status}`;
-                    try { const j = await res.json(); errMsg = j.message || j.error || errMsg; } catch {}
+                    try { const j = await res.json(); errMsg = j.message || j.error || errMsg; } catch { }
                     throw new Error(errMsg);
                 }
 

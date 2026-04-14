@@ -33,13 +33,26 @@ export async function onRequest(context) {
       });
     }
 
-    // Build JSON payload for NVIDIA NIM API
+    // Map aspect ratios to supported height/width
+    // SD 3.5 Large supported: 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280, 1344
+    const ratioMap = {
+      "1:1": { width: 1024, height: 1024 },
+      "16:9": { width: 1344, height: 768 },
+      "9:16": { width: 768, height: 1344 },
+      "4:3": { width: 1216, height: 896 },
+      "3:4": { width: 896, height: 1216 },
+      "21:9": { width: 1344, height: 576 }, // 576 might not be supported, let's stick to docs
+    };
+
+    const dims = ratioMap[aspect_ratio] || ratioMap["1:1"];
+
+    // Build JSON payload for NVIDIA NIM API (SD 3.5 Large spec)
     const payload = {
       prompt,
-      mode: "text-to-image",
-      aspect_ratio: aspect_ratio || "1:1",
-      output_format: output_format || "jpeg",
-      cfg_scale: cfg_scale ?? 5,
+      mode: "base",
+      height: dims.height,
+      width: dims.width,
+      cfg_scale: cfg_scale ?? 3.5, // SD 3.5 default is 3.5
       seed: seed ?? 0,
       steps: steps ?? 50,
     };
@@ -52,7 +65,7 @@ export async function onRequest(context) {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${NVIDIA_KEY}`,
-          "Accept": "application/json",
+          "Accept": "application/json", // Required as per docs
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
