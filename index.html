@@ -4454,7 +4454,15 @@ LANDING PAGE — New User Onboarding Focus
         }
 
         function liveFallbacks(chosen) {
-            const pool = USE_SLOW_MODE ? ALL_SLOW : ALL_FREE;
+            if (USE_SLOW_MODE) {
+                const order = [
+                    "nvidia/nemotron-3-super-120b-a12b", // Max
+                    "qwen/qwen3.5-397b-a17b",           // Pro
+                    "minimax/minimax-m2.7"              // Lite
+                ];
+                return order.filter(m => m !== chosen && !deadModels.has(m) && order.indexOf(m) > order.indexOf(chosen));
+            }
+            const pool = ALL_FREE;
             return pool.filter(m => m !== chosen && !deadModels.has(m));
         }
 
@@ -4935,13 +4943,12 @@ LANDING PAGE — New User Onboarding Focus
                         lastRender = nowTS;
                     }
 
-                    // Dynamic delay: 0ms for large queues
+                    // Dynamic delay: much more aggressive for large queues
                     let delay;
-                    if (charQueue.length > 300) delay = 0; 
-                    else if (charQueue.length > 120) delay = 1;
-                    else if (charQueue.length > 50) delay = 2;
-                    else if (charQueue.length > 15) delay = 4;
-                    else delay = 6 + Math.random() * 6; // 6-12ms
+                    if (charQueue.length > 500) delay = 0;
+                    else if (charQueue.length > 100) delay = 1;
+                    else if (charQueue.length > 30) delay = 2;
+                    else delay = 3; // max 3ms even for last chars
                     await new Promise(r => setTimeout(r, delay));
                 }
                 isTyping = false;
@@ -5010,15 +5017,15 @@ LANDING PAGE — New User Onboarding Focus
 
             if (useSlow) {
                 if (model === "nvidia/nemotron-3-super-120b-a12b") {
-                    payload = { model, messages, temperature: 1, top_p: 0.95, max_tokens: 16384, reasoning_budget: 16384, chat_template_kwargs: { "enable_thinking": true }, stream: true };
+                    payload = { model, messages, temperature: 0.6, top_p: 0.95, max_tokens: 4096, stream: true };
                 } else if (model === "qwen/qwen3.5-397b-a17b") {
-                    payload = { model, messages, temperature: 0.60, top_p: 0.95, max_tokens: 16384, chat_template_kwargs: { "enable_thinking": true }, stream: true };
+                    payload = { model, messages, temperature: 0.60, top_p: 0.95, max_tokens: 4096, stream: true };
                 } else if (model === "minimax/minimax-m2.7") {
                     payload = { model, messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
                 } else if (model.includes("vl") || model.includes("vision")) {
                     payload = { model, messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
                 } else {
-                    payload = { model: "qwen/qwen3-coder-480b-a35b-instruct", messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
+                    payload = { model, messages, temperature: 0.7, top_p: 0.8, max_tokens: 4096, stream: true };
                 }
             } else {
                 payload = { model, messages, max_tokens: 16384, temperature: 1.00, top_p: 0.95, stream: true, chat_template_kwargs: { "enable_thinking": true } };
@@ -5231,7 +5238,9 @@ LANDING PAGE — New User Onboarding Focus
             if (lower.length < 8) return null;
 
             // Use a lightweight check via the AI itself
-            const checkModel = USE_SLOW_MODE ? ALL_SLOW[ALL_SLOW.length - 1] : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
+            // Skip auto-search entirely in slow mode to save ~4-6 seconds per request
+            const checkModel = USE_SLOW_MODE ? null : (selectedModel === 'custom' ? getModel() : ALL_FREE[ALL_FREE.length - 1]);
+            if (!checkModel) return null; // skip in slow mode
 
             // Strict 3-second timeout so it never blocks the main response
             const searchAbort = new AbortController();

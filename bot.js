@@ -204,7 +204,7 @@ client.on(Events.MessageCreate, async (message) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model:       'qwen/qwen3-coder-480b-a35b-instruct',
+      model:       'nvidia/nemotron-3-super-120b-a12b',
       messages:    apiMessages,
       temperature: 0.7,
       top_p:       0.8,
