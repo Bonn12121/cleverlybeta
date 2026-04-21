@@ -29,6 +29,26 @@ app.post('/api/search', async (req, res) => {
     }
 });
 
+// Serper image search proxy
+app.post('/api/images', async (req, res) => {
+    const SERPER_KEY = process.env.SERPER_API_KEY;
+    if (!SERPER_KEY) return res.status(500).json({ error: 'SERPER_API_KEY not set in environment' });
+    const query = req.body.q;
+    if (!query) return res.status(400).json({ error: "Missing 'q' parameter" });
+    try {
+        const r = await fetch('https://google.serper.dev/images', {
+            method: 'POST',
+            headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q: query }),
+        });
+        const data = await r.json();
+        res.status(r.status).json(data);
+    } catch (err) {
+        console.error('Serper Image Error:', err);
+        res.status(500).json({ error: 'Image search proxy error', message: err.message });
+    }
+});
+
 // NVIDIA completions proxy — injects API key from env
 app.post('/api/completions', async (req, res) => {
     const NV_KEY = process.env.NV_API_KEY;

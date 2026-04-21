@@ -7,7 +7,7 @@
     <title>Cleverly — Premium AI Assistant</title>
     <!-- Security: Content Security Policy -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://cdnjs.cloudflare.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
     <meta name="description"
         content="Cleverly is a premium AI assistant powered by NVIDIA. Chat with the best AI models instantly.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,6 +20,9 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"
         integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+"
         crossorigin="anonymous"></script>
+    <!-- Leaflet for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css"
         integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"
@@ -4105,10 +4108,10 @@ LANDING PAGE — Minimal Onboarding
         ];
 
         const TONES = {
-            friendly: "You are Cleverly. Externally, behave as an incredibly warm, open, and sociable companion who connects effortlessly with the user. Internally, maintain absolute maximum focus and engage in deep, rigorous thinking to ensure your logic and answers have an error rate as close to exactly zero as possible.",
-            professional: "You are Cleverly. Externally, maintain a highly professional, polite, and warmly refined demeanor. Internally, engage in profound analytical thinking, maximizing your focus to deliver absolutely precise, structured answers with a near-zero error rate.",
-            concise: "You are Cleverly. Externally, communicate efficiently and sociably but without unnecessary fluff. Internally, perform deep, meticulous reasoning to ensure your brief answers are completely accurate and error-free.",
-            creative: "You are Cleverly. Externally, be an open, vibrant, and incredibly friendly collaborator. Internally, apply deep, hyper-focused, and rigorous logic to guarantee that your creative ideas and solutions are perfectly sound and error-free.",
+            friendly: "You are Cleverly. Externally, behave as an incredibly warm, open, and sociable companion. Internally, maintain absolute maximum focus and engage in deep, rigorous thinking. [Cards Mode]: If discussed, provide a structured data tag: <cleverly_card type=\"TYPE\">{JSON_DATA}</cleverly_card> at the end of your response.",
+            professional: "You are Cleverly. Externally, maintain a highly professional, polite demeanor. Internally, engage in profound analytical thinking. [Cards Mode]: Provide data tag: <cleverly_card type=\"TYPE\">{JSON_DATA}</cleverly_card> for relevant entities.",
+            concise: "You are Cleverly. Externally, communicate efficiently. Internally, perform deep, meticulous reasoning. [Cards Mode]: Use <cleverly_card type=\"TYPE\">{JSON_DATA}</cleverly_card> for entities.",
+            creative: "You are Cleverly. Externally, be a vibrant collaborator. Internally, apply deep, hyper-focused logic. [Cards Mode]: Use <cleverly_card type=\"TYPE\">{JSON_DATA}</cleverly_card> for rich UI cards.",
         };
 
         const S = {
@@ -4808,8 +4811,41 @@ LANDING PAGE — Minimal Onboarding
                     // unless it's the very last chunk.
                     const nowTS = performance.now();
                     if (nowTS - lastRender > 16 || charQueue.length === 0) {
-                        const contentHtml = renderMarkdown(rawAcc);
+                        // AI-Triggered Cards: Detect <cleverly_card> tags
+                        let displayedHTML = rawAcc;
+                        const cardRegex = /<cleverly_card\s+type="([^"]+)">([\s\S]*?)<\/cleverly_card>/g;
+                        
+                        // We replace the tag with a placeholder in the visible Markdown, 
+                        // but only if the tag is COMPLETE (ending with </cleverly_card>)
+                        displayedHTML = displayedHTML.replace(cardRegex, (match, type, jsonStr) => {
+                            try {
+                                const cardData = JSON.parse(jsonStr);
+                                cardData.type = type;
+                                // We'll return a special marker that we'll turn into a card after rendering
+                                return `<div class="cleverly-card-placeholder" data-payload='${JSON.stringify(cardData).replace(/'/g, "&apos;")}'></div>`;
+                            } catch (e) {
+                                return ""; // Hide malformed JSON
+                            }
+                        });
+
+                        const contentHtml = renderMarkdown(displayedHTML);
                         textEl.innerHTML = contentHtml + '<span class="typing-cursor"></span>';
+                        
+                        // Replace placeholders with real UI cards
+                        textEl.querySelectorAll('.cleverly-card-placeholder').forEach(ph => {
+                            try {
+                                const data = JSON.parse(ph.dataset.payload);
+                                const cardHTML = renderLiveCard(data, true);
+                                if (cardHTML) {
+                                    const container = document.createElement('div');
+                                    container.innerHTML = cardHTML;
+                                    ph.replaceWith(container);
+                                } else {
+                                    ph.remove();
+                                }
+                            } catch {}
+                        });
+
                         cursor = textEl.querySelector('.typing-cursor');
                         c.scrollTop = c.scrollHeight;
                         lastRender = nowTS;
@@ -5003,6 +5039,143 @@ LANDING PAGE — Minimal Onboarding
             return html;
         }
 
+        // ── LIVE CARDS ──
+
+        function renderLiveCard(data, isAI = false) {
+            if (!data) return '';
+            
+            // If it's AI-generated data, it's already structured as we want it
+            let kg = isAI ? (data.type === 'knowledge' ? data : null) : data.knowledgeGraph;
+            let ab = isAI ? (data.type === 'weather' || data.type === 'crypto' ? data : null) : data.answerBox;
+            let places = isAI ? (data.type === 'map' ? (Array.isArray(data.places) ? data.places : [data]) : []) : (data.places || []);
+
+            // Case 1: Knowledge Panel
+            if (kg) {
+                const title = kg.title || kg.name || 'Details';
+                const desc = kg.description || kg.bio || '';
+                const img = kg.imageUrl || kg.image || '';
+                const type = kg.type || 'Entity';
+                const attrs = kg.attributes || kg.facts || {};
+                
+                let attrsHtml = '';
+                for (const [k, v] of Object.entries(attrs)) {
+                    attrsHtml += `<div class="kp-fact-item"><div class="kp-fact-label">${esc(k)}</div><div class="kp-fact-value">${esc(v)}</div></div>`;
+                }
+
+                return `
+                <div class="live-card kp-card">
+                    ${img ? `<div class="kp-hero"><img src="${esc(img)}" alt="${esc(title)}"></div>` : ''}
+                    <div class="kp-body">
+                        <div class="kp-type">${esc(type)}</div>
+                        <div class="kp-name">${esc(title)}</div>
+                        <div class="kp-desc">${esc(desc)}</div>
+                        ${attrsHtml ? `<div class="kp-facts">${attrsHtml}</div>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            // Case 2: Weather or Crypto
+            if (ab || (isAI && (data.type === 'weather' || data.type === 'crypto'))) {
+                const type = isAI ? data.type : null;
+                const text = isAI ? '' : (ab.answer || ab.snippet || ab.title || '').toLowerCase();
+                const isWeather = type === 'weather' || text.includes('weather') || text.includes('°c') || text.includes('°f') || text.includes('humidity');
+                const isCrypto = type === 'crypto' || (text.includes('price') || text.includes('value')) && (text.includes('btc') || text.includes('eth') || text.includes('bitcoin'));
+
+                if (isWeather) {
+                    const temp = isAI ? data.temp : (ab.answer || ab.snippet || '??');
+                    const cond = isAI ? data.condition : (ab.title || 'Current Weather');
+                    const loc = isAI ? data.location : (data.searchParameters?.location || 'Your Area');
+                    return `
+                    <div class="live-card weather-card">
+                        <div class="live-card-header">
+                            <div class="live-card-title">${icon('bolt', 'icon-sm')} Live Weather</div>
+                        </div>
+                        <div class="weather-card">
+                            <div class="weather-main">
+                                <div class="weather-temp">${esc(temp)}</div>
+                                <div class="weather-info">
+                                    <div class="weather-condition">${esc(cond)}</div>
+                                    <div class="weather-loc">${esc(loc)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                if (isCrypto) {
+                    const price = isAI ? data.price : (ab.answer || ab.snippet || 'Unknown');
+                    const name = isAI ? data.name : (ab.title || 'Cryptocurrency');
+                    return `
+                    <div class="live-card">
+                        <div class="live-card-header">
+                            <div class="live-card-title">${icon('bolt', 'icon-sm')} Crypto Ticker</div>
+                        </div>
+                        <div style="padding: 20px; text-align: center;">
+                            <div style="font-size: 32px; font-weight: 800; color: #10b981;">${esc(price)}</div>
+                            <div style="font-size: 14px; color: var(--text-tertiary); margin-top: 4px;">${esc(name)}</div>
+                        </div>
+                    </div>`;
+                }
+            }
+
+            // Case 3: Map
+            if (places && places.length > 0) {
+                const mapId = 'map-' + Math.random().toString(36).slice(2, 10);
+                setTimeout(() => initLiveMap(mapId, places), 300); // Give it more time to render in DOM
+                
+                return `
+                <div class="live-card">
+                    <div class="live-card-header">
+                        <div class="live-card-title">${icon('map', 'icon-sm')} Local Recommendations</div>
+                    </div>
+                    <div class="map-card" id="${mapId}"></div>
+                </div>`;
+            }
+
+            return '';
+        }
+
+        function initLiveMap(id, items) {
+            const el = document.getElementById(id);
+            if (!el || typeof L === 'undefined') return;
+            
+            // Check if already initialized
+            if (el._leaflet_id) return;
+
+            const map = L.map(id, { attributionControl: false }).setView([0, 0], 13);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+
+            const bounds = [];
+            const redPoleIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div class='red-pole-marker'></div>",
+                iconSize: [16, 16],
+                iconAnchor: [8, 16]
+            });
+
+            items.forEach(item => {
+                const lat = parseFloat(item.latitude || item.lat);
+                const lng = parseFloat(item.longitude || item.lng || item.lon);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    bounds.push([lat, lng]);
+                    const ratingHtml = item.rating ? `<span>⭐ ${item.rating}</span>` : '';
+                    const popupHtml = `
+                    <div class="map-popup-card">
+                        <div class="map-popup-title">${esc(item.title || item.name)}</div>
+                        <div class="map-popup-meta">${ratingHtml} ${item.reviews ? `(${item.reviews})` : ''}</div>
+                        <div class="map-popup-meta">${esc(item.address || '')}</div>
+                        <div class="map-popup-actions">
+                            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" class="map-btn-dir">Get Directions</a>
+                        </div>
+                    </div>`;
+                    L.marker([lat, lng], { icon: redPoleIcon }).addTo(map).bindPopup(popupHtml);
+                }
+            });
+
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
+            else el.closest('.live-card')?.remove();
+        }
+
         async function doWebSearch(query) {
             try {
                 const res = await fetch('/api/search', {
@@ -5171,6 +5344,13 @@ LANDING PAGE — Minimal Onboarding
         }
 
 
+        // ── Intent Engine ──
+        const INTENT_KEYWORDS = /\b(weather|temperature|forecast|price|crypto|bitcoin|btc|eth|ethereum|solana|restaurant|cafe|food|pizza|sushi|map|directions|who is|who was|biography|born|died|location|address|where is)\b/i;
+        
+        function detectIntentLocally(prompt) {
+            return INTENT_KEYWORDS.test(prompt);
+        }
+
         // ── Send ──
         async function doSend(prompt, chatId) {
             S.streaming = true; syncSendBtn(); setNotice(""); showRetry("");
@@ -5204,11 +5384,14 @@ LANDING PAGE — Minimal Onboarding
             // Manual search mode (user clicked the search button)
             if (S.searchEnabled) {
                 searchQuery = prompt;
-                // Keep S.searchEnabled on — user controls it manually
                 toast('🔍 Searching the web...');
             } else if (!msgObj.attachments || msgObj.attachments.length === 0) {
-                // Auto-search: let AI decide if search is needed
-                searchQuery = await shouldAutoSearch(prompt, chat.messages);
+                // Instant Local Detection vs Slow AI detection
+                if (detectIntentLocally(prompt)) {
+                    searchQuery = prompt;
+                } else {
+                    searchQuery = await shouldAutoSearch(prompt, chat.messages);
+                }
             }
 
             if (searchQuery) {
@@ -5229,26 +5412,28 @@ LANDING PAGE — Minimal Onboarding
                     const c = document.getElementById("chatContainer");
                     let wrap = c.querySelector(".messages-wrap");
 
-                    // Show search results visually
+                    // INSTANT AUTO-INJECTION (Smart Mode)
+                    if (wrap) {
+                        const richHtml = renderLiveCard(data);
+                        if (richHtml) {
+                            const richDiv = document.createElement("div");
+                            richDiv.innerHTML = richHtml;
+                            wrap.appendChild(richDiv);
+                        }
+                    }
+
                     if (searchResults.length && wrap) {
                         const resDiv = document.createElement("div");
                         resDiv.innerHTML = renderSearchResults(searchResults);
                         wrap.appendChild(resDiv.firstElementChild);
-                        c.scrollTop = c.scrollHeight;
                     }
 
-                    // Show image gallery if images were found
                     if (imageResults && imageResults.length && wrap) {
                         const imgDiv = document.createElement("div");
                         imgDiv.innerHTML = renderImageGallery(imageResults);
                         wrap.appendChild(imgDiv.firstElementChild);
-                        c.scrollTop = c.scrollHeight;
-
-                        // Append image context for the AI so it knows images are shown
-                        if (searchContext) {
-                            searchContext += `\n\n[Images shown to user: ${imageResults.map(i => i.title || '').filter(Boolean).join(', ')}]`;
-                        }
                     }
+                    c.scrollTop = c.scrollHeight;
                 }
             }
 
