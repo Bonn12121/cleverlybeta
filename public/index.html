@@ -5178,25 +5178,27 @@ LANDING PAGE — Minimal Onboarding
 
         async function doWebSearch(query) {
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 const res = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ q: query }),
+                    signal: controller.signal,
                 });
+                clearTimeout(timeoutId);
                 if (!res.ok) {
                     const errBody = await res.json().catch(() => ({}));
                     const errMsg = errBody.error || `Search failed (HTTP ${res.status})`;
                     console.error('Search error:', errMsg, errBody);
-                    toast(`⚠️ ${errMsg}`);
-                    setNotice(errMsg, true);
+                    // Silent failure for auto-search/timeouts to avoid disruption
                     return null;
                 }
                 const data = await res.json();
                 return data;
             } catch (err) {
-                console.error('Search fetch error:', err);
-                toast('⚠️ Web search unavailable');
-                setNotice('Web search request failed. Check SERPER_API_KEY.', true);
+                if (err.name === 'AbortError') console.warn('Web search timed out');
+                else console.error('Search fetch error:', err);
                 return null;
             }
         }
@@ -5204,16 +5206,21 @@ LANDING PAGE — Minimal Onboarding
         // ── Image Search ──
         async function doImageSearch(query) {
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 const res = await fetch('/api/images', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ q: query }),
+                    signal: controller.signal,
                 });
+                clearTimeout(timeoutId);
                 if (!res.ok) return null;
                 const data = await res.json();
                 return data.images?.slice(0, 6) || [];
             } catch (err) {
-                console.error('Image search error:', err);
+                if (err.name === 'AbortError') console.warn('Image search timed out');
+                else console.error('Image search error:', err);
                 return null;
             }
         }

@@ -32,6 +32,9 @@ export async function onRequest(context) {
       });
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const serperRes = await fetch("https://google.serper.dev/search", {
       method: "POST",
       headers: {
@@ -39,8 +42,10 @@ export async function onRequest(context) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ q: query, num: 5 }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeoutId);
     const data = await serperRes.json();
 
     return new Response(JSON.stringify(data), {

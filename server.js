@@ -16,11 +16,15 @@ app.post('/api/search', async (req, res) => {
     const query = req.body.q;
     if (!query) return res.status(400).json({ error: "Missing 'q' parameter" });
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
         const r = await fetch('https://google.serper.dev/search', {
             method: 'POST',
             headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ q: query, num: 5 }),
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
         const data = await r.json();
         res.status(r.status).json(data);
     } catch (err) {
@@ -36,11 +40,15 @@ app.post('/api/images', async (req, res) => {
     const query = req.body.q;
     if (!query) return res.status(400).json({ error: "Missing 'q' parameter" });
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
         const r = await fetch('https://google.serper.dev/images', {
             method: 'POST',
             headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ q: query }),
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
         const data = await r.json();
         res.status(r.status).json(data);
     } catch (err) {
