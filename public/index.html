@@ -4815,16 +4815,15 @@ LANDING PAGE — Minimal Onboarding
                         let displayedHTML = rawAcc;
                         const cardRegex = /<cleverly_card\s+type="([^"]+)">([\s\S]*?)<\/cleverly_card>/g;
                         
-                        // We replace the tag with a placeholder in the visible Markdown, 
-                        // but only if the tag is COMPLETE (ending with </cleverly_card>)
+                        // We replace the tag with a placeholder in the visible Markdown
                         displayedHTML = displayedHTML.replace(cardRegex, (match, type, jsonStr) => {
                             try {
-                                const cardData = JSON.parse(jsonStr);
+                                const cleanJson = jsonStr.replace(/```json|```/g, "").trim();
+                                const cardData = JSON.parse(cleanJson);
                                 cardData.type = type;
-                                // We'll return a special marker that we'll turn into a card after rendering
                                 return `<div class="cleverly-card-placeholder" data-payload='${JSON.stringify(cardData).replace(/'/g, "&apos;")}'></div>`;
                             } catch (e) {
-                                return ""; // Hide malformed JSON
+                                return ""; 
                             }
                         });
 
@@ -4838,6 +4837,7 @@ LANDING PAGE — Minimal Onboarding
                                 const cardHTML = renderLiveCard(data, true);
                                 if (cardHTML) {
                                     const container = document.createElement('div');
+                                    container.className = 'card-wrapper-spacer';
                                     container.innerHTML = cardHTML;
                                     ph.replaceWith(container);
                                 } else {
@@ -5048,6 +5048,22 @@ LANDING PAGE — Minimal Onboarding
             let kg = isAI ? (data.type === 'knowledge' ? data : null) : data.knowledgeGraph;
             let ab = isAI ? (data.type === 'weather' || data.type === 'crypto' ? data : null) : data.answerBox;
             let places = isAI ? (data.type === 'map' ? (Array.isArray(data.places) ? data.places : [data]) : []) : (data.places || []);
+            
+            // IMPROVED: If no official places, try to find them in organic results (common for Search pack)
+            if (!isAI && (!places || places.length === 0) && data.organic) {
+                places = data.organic.filter(o => o.latitude || o.longitude || o.rating || o.address);
+                if (places.length > 0) {
+                   // Clean up organic results to fit place format
+                   places = places.map(p => ({
+                       title: p.title,
+                       address: p.address || p.snippet,
+                       rating: p.rating || null,
+                       reviews: p.reviews || null,
+                       latitude: p.latitude,
+                       longitude: p.longitude
+                   })).filter(p => p.latitude && p.longitude);
+                }
+            }
 
             // Case 1: Knowledge Panel
             if (kg) {
@@ -5387,25 +5403,20 @@ LANDING PAGE — Minimal Onboarding
             let searchContext = null;
             let searchResults = null;
             let searchQuery = null;
+            let seededCard = null;
 
             // Manual search mode (user clicked the search button)
             if (S.searchEnabled) {
                 searchQuery = prompt;
                 toast('🔍 Searching the web...');
             } else if (!msgObj.attachments || msgObj.attachments.length === 0) {
-                // Instant Local Detection vs Slow AI detection
-                if (detectIntentLocally(prompt)) {
-                    searchQuery = prompt;
-                } else {
-                    searchQuery = await shouldAutoSearch(prompt, chat.messages);
-                }
+                if (detectIntentLocally(prompt)) searchQuery = prompt;
+                else searchQuery = await shouldAutoSearch(prompt, chat.messages);
             }
 
             if (searchQuery) {
                 const indicator = createSearchIndicator(searchQuery);
                 setStatus('Searching the web...');
-
-                // Fire text search and image search in parallel
                 const [data, imageResults] = await Promise.all([
                     doWebSearch(searchQuery),
                     doImageSearch(searchQuery)
@@ -5415,32 +5426,28 @@ LANDING PAGE — Minimal Onboarding
                 if (data) {
                     searchContext = formatSearchContext(data);
                     searchResults = data.organic?.slice(0, 5) || [];
-
                     const c = document.getElementById("chatContainer");
                     let wrap = c.querySelector(".messages-wrap");
 
-                    // INSTANT AUTO-INJECTION (Smart Mode)
                     if (wrap) {
-                        const richHtml = renderLiveCard(data);
-                        if (richHtml) {
-                            const richDiv = document.createElement("div");
-                            richDiv.innerHTML = richHtml;
-                            wrap.appendChild(richDiv);
+                        // Prep the seeded card for the AI to output
+                        if (data.knowledgeGraph) {
+                           seededCard = `<cleverly_card type="knowledge">${JSON.stringify(data.knowledgeGraph)}</cleverly_card>`;
+                        } else if (data.places && data.places.length > 0) {
+                           seededCard = `<cleverly_card type="map">${JSON.stringify({ places: data.places })}</cleverly_card>`;
+                        } else if (data.answerBox) {
+                           seededCard = `<cleverly_card type="info">${JSON.stringify(data.answerBox)}</cleverly_card>`;
                         }
+                        
+                        // Robust Rendering for results
+                        if (searchResults.length) {
+                             wrap.insertAdjacentHTML('beforeend', renderSearchResults(searchResults));
+                        }
+                        if (imageResults && imageResults.length) {
+                             wrap.insertAdjacentHTML('beforeend', renderImageGallery(imageResults));
+                        }
+                        c.scrollTop = c.scrollHeight;
                     }
-
-                    if (searchResults.length && wrap) {
-                        const resDiv = document.createElement("div");
-                        resDiv.innerHTML = renderSearchResults(searchResults);
-                        wrap.appendChild(resDiv.firstElementChild);
-                    }
-
-                    if (imageResults && imageResults.length && wrap) {
-                        const imgDiv = document.createElement("div");
-                        imgDiv.innerHTML = renderImageGallery(imageResults);
-                        wrap.appendChild(imgDiv.firstElementChild);
-                    }
-                    c.scrollTop = c.scrollHeight;
                 }
             }
 
@@ -5451,19 +5458,14 @@ LANDING PAGE — Minimal Onboarding
             const currentHasFiles = msgObj.attachments && msgObj.attachments.length > 0;
             const useMultimodalModel = currentHasFiles;
 
-            // Build multimodal-aware messages for the API
+            // Build messages for the API
             const rawMsgs = chat.messages.map(m => {
                 if (m.role === "user" && m.attachments && m.attachments.length > 0) {
-                    // Multimodal message: array of content parts
                     const parts = [{ type: "text", text: m.content || "" }];
                     for (const att of m.attachments) {
                         if (att.type === "image") {
-                            // Only include actual image data if we are using a multimodal model for THIS turn
-                            if (useMultimodalModel) {
-                                parts.push({ type: "image_url", image_url: { url: att.data } });
-                            } else {
-                                parts[0].text += `\n[Image attachment omitted]`;
-                            }
+                            if (useMultimodalModel) parts.push({ type: "image_url", image_url: { url: att.data } });
+                            else parts[0].text += `\n[Image attachment omitted]`;
                         } else if (att.type === "text") {
                             parts[0].text += `\n\n--- File: ${att.name} ---\n${att.data}\n--- End of file ---`;
                         }
@@ -5474,10 +5476,14 @@ LANDING PAGE — Minimal Onboarding
                 return { role: m.role, content: m.content || "" };
             });
 
-            // Build the system prompt, injecting search context if available
+            // Build system prompt with MANDATORY seeding
             let sysPrompt = sys;
             if (searchContext) {
-                sysPrompt += `\n\n[Web Search Results for "${searchQuery}"]:\n${searchContext}\n\nUse the above web search results to inform your answer. Cite sources when possible using [1], [2], etc. If the search results don't contain relevant information, rely on your own knowledge.`;
+                sysPrompt += `\n\n[Web Search Context]:\n${searchContext}`;
+                if (seededCard) {
+                    sysPrompt += `\n\nREQUIRED: You must include this exact tag at the very end of your response to show the interactive info panel: ${seededCard}`;
+                }
+                sysPrompt += `\n\nCite sources using [1], [2], etc.`;
             }
 
             // Add system prompt as the first message
