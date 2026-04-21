@@ -7,7 +7,7 @@
     <title>Cleverly — Premium AI Assistant</title>
     <!-- Security: Content Security Policy -->
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https: *.tile.openstreetmap.org https://unpkg.com; connect-src 'self' https://openrouter.ai https://integrate.api.nvidia.com https://google.serper.dev https://api.stability.ai; frame-src blob:;">
     <meta name="description"
         content="Cleverly is a premium AI assistant powered by NVIDIA. Chat with the best AI models instantly.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,6 +39,9 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.3.3/dist/purify.min.js"
         integrity="sha384-pcBjnGbkyKeOXaoFkmJiuR9E08/6gkmus6/Strimnxtl3uk0Hx23v345pWyC/MMr"
         crossorigin="anonymous"></script>
+    <!-- Mapping Framework — Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         /* ═══════════════════════════════════════════
            CLEVERLY — Hyper-Modern Chatbot Design
@@ -1819,6 +1822,108 @@ LANDING PAGE — Minimal Onboarding
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* ══════════════════════════════════════
+           LIVE CARDS (Knowledge, Weather, Maps)
+           ══════════════════════════════════════ */
+        .live-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-m);
+            overflow: hidden;
+            margin: 12px 0 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            animation: cardFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 600px;
+        }
+
+        @keyframes cardFadeUp {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* 1. Knowledge Panel (People, Company) */
+        .knowledge-card { display: flex; flex-direction: column; }
+        .knowledge-header { position: relative; width: 100%; height: 200px; background: #000; overflow: hidden; }
+        .knowledge-header img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+        .knowledge-header-overlay {
+            position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+        }
+        .knowledge-title { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+        .knowledge-subtitle { font-size: 13px; color: var(--text-secondary); }
+        .knowledge-content { padding: 16px; font-size: 14px; color: var(--text-primary); line-height: 1.6; }
+        .knowledge-attrs { padding: 0 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .attr-item { display: flex; flex-direction: column; gap: 2px; }
+        .attr-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); letter-spacing: 0.05em; }
+        .attr-val { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+
+        /* 2. Weather Widget */
+        .weather-card { padding: 24px; display: flex; flex-direction: column; align-items: center; text-align: center; background: linear-gradient(135deg, #1e293b, #0f172a); }
+        .weather-loc { font-size: 15px; color: var(--text-secondary); margin-bottom: 8px; }
+        .weather-main { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .weather-temp { font-size: 48px; font-weight: 700; color: #fff; letter-spacing: -2px; }
+        .weather-temp span { font-size: 24px; vertical-align: top; margin-left: 4px; color: var(--text-secondary); }
+        .weather-icon-lg { font-size: 40px; }
+        .weather-desc { font-size: 14px; font-weight: 500; color: #fff; margin-bottom: 20px; text-transform: capitalize; }
+        .weather-grid { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .weather-stat { display: flex; flex-direction: column; gap: 4px; }
+        .weather-stat-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; }
+        .weather-stat-val { font-size: 13px; color: #fff; font-weight: 500; }
+
+        /* 3. Crypto Card / Inline Answer */
+        .crypto-card { padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+        .crypto-info { display: flex; align-items: center; gap: 12px; }
+        .crypto-icon { width: 36px; height: 36px; background: #f7931a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 18px; }
+        .crypto-name { display: flex; flex-direction: column; }
+        .crypto-sym { font-size: 16px; font-weight: 700; color: #fff; }
+        .crypto-full { font-size: 12px; color: var(--text-tertiary); }
+        .crypto-price { text-align: right; }
+        .crypto-val { font-size: 18px; font-weight: 700; color: #fff; }
+        .crypto-change { font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .crypto-change.up { color: var(--success); }
+        .crypto-change.down { color: var(--danger); }
+
+        /* 4. Map Card */
+        .map-card { width: 100%; }
+        .map-container { width: 100%; height: 320px; background: #161616; position: relative; }
+        .map-info-tray { padding: 14px; background: var(--bg-card); border-top: 1px solid var(--border-default); display: flex; flex-direction: column; gap: 10px; }
+        .map-place-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .map-place-item:last-child { border-bottom: none; }
+        .map-place-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+        .map-place-meta { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+        .map-place-rating { display: flex; align-items: center; gap: 4px; color: #fbbf24; font-size: 12px; font-weight: 700; }
+
+        /* Custom Marker: Red Pole */
+        .custom-pole-marker {
+            width: 32px;
+            height: 32px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+            animation: polePulse 2s infinite;
+        }
+        .custom-pole-marker::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ef4444;
+        }
+        @keyframes polePulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .leaflet-container { background: #111 !important; }
+        .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(100%); }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--bg-card) !important; color: var(--text-primary) !important; border: 1px solid var(--border-default); }
 
         .imggen-loading-text {
             font-size: 13.5px;
@@ -5019,7 +5124,7 @@ LANDING PAGE — Minimal Onboarding
                     return null;
                 }
                 const data = await res.json();
-                return data;
+                return data; // Returns entire Serper JSON
             } catch (err) {
                 console.error('Search fetch error:', err);
                 toast('⚠️ Web search unavailable');
@@ -5094,17 +5199,185 @@ LANDING PAGE — Minimal Onboarding
             const organic = data.organic || [];
             const answerBox = data.answerBox;
             const knowledgeGraph = data.knowledgeGraph;
+            const places = data.places || [];
+            
             let context = '';
             if (answerBox) {
-                context += `Answer Box: ${answerBox.title || ''} — ${answerBox.answer || answerBox.snippet || ''}\n\n`;
+                context += `Direct Answer: ${answerBox.title || ''} — ${answerBox.snippet || answerBox.answer || ''}\n\n`;
             }
             if (knowledgeGraph) {
-                context += `Knowledge Graph: ${knowledgeGraph.title || ''} (${knowledgeGraph.type || ''}) — ${knowledgeGraph.description || ''}\n\n`;
+                context += `Knowledge Panel: ${knowledgeGraph.title || ''} (${knowledgeGraph.type || ''}) — ${knowledgeGraph.description || ''}\n`;
+                if (knowledgeGraph.attributes) {
+                    context += `Key Info: ${Object.entries(knowledgeGraph.attributes).map(([k, v]) => `${k}: ${v}`).join(', ')}\n`;
+                }
+                context += `\n`;
             }
+            if (places.length) {
+                context += `Top Places Found:\n`;
+                places.slice(0, 3).forEach(p => {
+                    context += `- ${p.title} (${p.rating}★): ${p.address}\n`;
+                });
+                context += `\n`;
+            }
+            
             organic.slice(0, 5).forEach((r, i) => {
                 context += `[${i + 1}] ${r.title}\n${r.snippet}\nSource: ${r.link}\n\n`;
             });
             return context.trim() || null;
+        }
+
+        // ── Rich Live Cards Logic ──
+        function renderLiveCard(data) {
+            if (!data) return null;
+
+            // 1. Priority: Places / Restaurants (Maps)
+            if (data.places && data.places.length > 0) {
+                return renderMapCard(data.places);
+            }
+
+            // 2. Knowledge Graph (People, Figures, Companies)
+            if (data.knowledgeGraph) {
+                return renderKnowledgeCard(data.knowledgeGraph);
+            }
+
+            // 3. Answer Box (Weather, Crypto, Quick Facts)
+            if (data.answerBox) {
+                const ab = data.answerBox;
+                const text = (ab.snippet || ab.answer || ab.title || "").toLowerCase();
+                
+                // Weather Detection
+                if (text.includes("degree") || text.includes("temp") || text.includes("°") || text.includes("celsius") || text.includes("fahrenheit")) {
+                    return renderWeatherCard(ab);
+                }
+                
+                // Crypto / Finance Detection
+                if (text.includes("btc") || text.includes("bitcoin") || text.includes("crypto") || text.includes("price") || text.includes("$") || text.includes("market cap")) {
+                    return renderCryptoCard(ab);
+                }
+            }
+
+            return null;
+        }
+
+        function renderKnowledgeCard(kg) {
+            const attrs = kg.attributes ? Object.entries(kg.attributes).slice(0, 4) : [];
+            let attrHtml = '';
+            attrs.forEach(([k, v]) => {
+                attrHtml += `<div class="attr-item"><div class="attr-label">${esc(k)}</div><div class="attr-val">${esc(v)}</div></div>`;
+            });
+
+            return `
+                <div class="live-card knowledge-card">
+                    <div class="knowledge-header">
+                        <img src="${esc(kg.imageUrl || 'https://images.unsplash.com/photo-1541810480-e8369528d227?auto=format&fit=crop&q=80&w=600')}" alt="${esc(kg.title)}" />
+                        <div class="knowledge-header-overlay">
+                            <div class="knowledge-title">${esc(kg.title)}</div>
+                            <div class="knowledge-subtitle">${esc(kg.type || 'Entity')}</div>
+                        </div>
+                    </div>
+                    <div class="knowledge-content">${esc(kg.description || '')}</div>
+                    ${attrHtml ? `<div class="knowledge-attrs">${attrHtml}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderWeatherCard(ab) {
+            const tempMatch = (ab.snippet || ab.answer || "").match(/(\d+)\s?°/);
+            const temp = tempMatch ? tempMatch[1] : "??";
+            
+            return `
+                <div class="live-card weather-card">
+                    <div class="weather-loc">${esc(ab.title || 'Current Weather')}</div>
+                    <div class="weather-main">
+                        <div class="weather-icon-lg">🌡️</div>
+                        <div class="weather-temp">${temp}<span>°C</span></div>
+                    </div>
+                    <div class="weather-desc">${esc(ab.snippet || ab.answer || "Weather Update")}</div>
+                    <div class="weather-grid">
+                        <div class="weather-stat"><div class="weather-stat-label">Humidity</div><div class="weather-stat-val">Low</div></div>
+                        <div class="weather-stat"><div class="weather-stat-label">Wind</div><div class="weather-stat-val">Light</div></div>
+                        <div class="weather-stat"><div class="weather-stat-label">UV Index</div><div class="weather-stat-val">Safe</div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCryptoCard(ab) {
+            const isUp = (ab.snippet || "").includes("+") || !(ab.snippet || "").includes("-");
+            return `
+                <div class="live-card crypto-card">
+                    <div class="crypto-info">
+                        <div class="crypto-icon">₿</div>
+                        <div class="crypto-name">
+                            <div class="crypto-sym">Market Status</div>
+                            <div class="crypto-full">Live Market Data</div>
+                        </div>
+                    </div>
+                    <div class="crypto-price">
+                        <div class="crypto-val">${esc(ab.snippet || ab.answer || ab.title)}</div>
+                        <div class="crypto-change ${isUp ? 'up' : 'down'}">${isUp ? '▲ Positive' : '▼ Negative'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMapCard(places) {
+            const mapId = 'map-' + Date.now();
+            let itemsHtml = '';
+            places.slice(0, 3).forEach(p => {
+                itemsHtml += `
+                    <div class="map-place-item">
+                        <div class="map-place-content">
+                            <div class="map-place-name">${esc(p.title)}</div>
+                            <div class="map-place-meta">${esc(p.address)}</div>
+                        </div>
+                        <div class="map-place-rating">★ ${p.rating || 'N/A'}</div>
+                    </div>
+                `;
+            });
+
+            // Map Card
+            const card = document.createElement('div');
+            card.className = 'live-card map-card';
+            card.innerHTML = `
+                <div id="${mapId}" class="map-container"></div>
+                <div class="map-info-tray">${itemsHtml}</div>
+            `;
+
+            // We must return a string for innerHTML integration, but we need a post-render hook
+            // So we'll use a hack of firing a custom event or using a global registry
+            setTimeout(() => initMap(mapId, places), 100);
+            
+            return card.outerHTML;
+        }
+
+        function initMap(id, places) {
+            const el = document.getElementById(id);
+            if (!el || typeof L === 'undefined') return;
+            
+            // Default center: average of results or first result
+            const lat = places[0].latitude || 21.0285;
+            const lng = places[0].longitude || 105.8542;
+            
+            const map = L.map(id, { zoomControl: false }).setView([lat, lng], 14);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            const redPoleIcon = L.divIcon({
+                className: 'custom-pole-marker',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            places.forEach(p => {
+                if (p.latitude && p.longitude) {
+                    L.marker([p.latitude, p.longitude], { icon: redPoleIcon })
+                     .addTo(map)
+                     .bindPopup(`<b>${esc(p.title)}</b><br>${esc(p.address)}`);
+                }
+            });
         }
 
         // AI auto-detect: ask the model if the query needs a web search
@@ -5231,6 +5504,14 @@ LANDING PAGE — Minimal Onboarding
 
                     // Show search results visually
                     if (searchResults.length && wrap) {
+                        // Check if we have rich/live context
+                        const liveCardHtml = renderLiveCard(data);
+                        if (liveCardHtml) {
+                            const liveDiv = document.createElement("div");
+                            liveDiv.innerHTML = liveCardHtml;
+                            wrap.appendChild(liveDiv);
+                        }
+
                         const resDiv = document.createElement("div");
                         resDiv.innerHTML = renderSearchResults(searchResults);
                         wrap.appendChild(resDiv.firstElementChild);
