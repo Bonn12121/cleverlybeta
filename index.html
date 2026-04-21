@@ -1260,8 +1260,8 @@ LANDING PAGE — Minimal Onboarding
         }
 
         @keyframes sweep {
-            0% { background-position: -200% center; }
-            100% { background-position: 200% center; }
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
         }
 
         /* ── Typing cursor ── */
@@ -1643,8 +1643,8 @@ LANDING PAGE — Minimal Onboarding
             position: relative;
             border-radius: var(--radius-m);
             overflow: hidden;
-            border: 1px solid var(--border-default);
-            background: var(--bg-card); /* Changed from #000 to theme card background */
+            border: 1px solid rgba(255, 255, 255, 0.08); /* More subtle */
+            background: #000; /* Use pure black so no grey gap shows */
             margin: 12px auto 0;
             max-width: 580px;
             width: 100%;
@@ -1660,9 +1660,8 @@ LANDING PAGE — Minimal Onboarding
         .imggen-card img {
             width: 100%;
             height: auto;
-            aspect-ratio: 1 / 1; /* Standardize to square to prevent black bars */
-            max-height: 85vh;
-            object-fit: cover; /* Fill the area completely, no black bars */
+            max-height: 85vh; /* Limit height naturally */
+            object-fit: contain; /* Keep pure aspect natively */
             display: block;
             cursor: zoom-in;
         }
@@ -1672,9 +1671,7 @@ LANDING PAGE — Minimal Onboarding
             align-items: center;
             justify-content: space-between;
             padding: 12px 16px;
-            background: linear-gradient(to top, rgba(8, 8, 12, 0.9) 0%, rgba(8, 8, 12, 0.7) 100%);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: #08080C; /* Solid highly dark shade */
             border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -4053,7 +4050,7 @@ LANDING PAGE — Minimal Onboarding
         };
 
         const S = {
-            chats: JSON.parse(localStorage.getItem("cleverly_chats") || "[]"),
+            chats: (() => { try { return JSON.parse(localStorage.getItem("cleverly_chats") || "[]"); } catch { return []; } })(),
             activeId: null,
             queue: [],
             streaming: false,
@@ -4071,7 +4068,20 @@ LANDING PAGE — Minimal Onboarding
         const now = () => Date.now();
 
         function save() {
-            try { localStorage.setItem("cleverly_chats", JSON.stringify(S.chats)); } catch { }
+            try { 
+                const data = JSON.stringify(S.chats, (k, v) => {
+                    if (k === 'content' && typeof v === 'string' && v.includes('data:image/')) {
+                        return v.replace(/data:image\/[^)]+/g, '# [Image removed to conserve local storage]');
+                    }
+                    if (k === 'attachments' && Array.isArray(v)) {
+                        return v.map(a => (a.type === 'image' && a.data && a.data.length > 200000) ? { ...a, data: '#' } : a);
+                    }
+                    return v;
+                });
+                localStorage.setItem("cleverly_chats", data); 
+            } catch (e) {
+                console.warn("Save failed:", e);
+            }
         }
 
         let toastT;
@@ -5306,11 +5316,11 @@ LANDING PAGE — Minimal Onboarding
             loadingDiv.className = "imggen-loading";
             loadingDiv.innerHTML = `
                 <div class="imggen-spinner"></div>
-                <div class="imggen-loading-text">🎨 Generating image with FLUX.2-klein-4b…</div>
+                <div class="imggen-loading-text">🎨 Generating image...</div>
             `;
             if (wrap) { wrap.appendChild(loadingDiv); c.scrollTop = c.scrollHeight; }
 
-            setStatus('🎨 Generating image…');
+            setStatus('🎨 Generating image...');
 
             try {
                 const res = await fetch('/api/generate-image', {
