@@ -1208,15 +1208,18 @@ LANDING PAGE — Minimal Onboarding
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 30px;
             height: 30px;
-            padding: 0;
+            padding: 0 8px;
+            min-width: 30px;
             border: none;
             border-radius: var(--radius-m);
             background: transparent;
             color: var(--text-tertiary);
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 550;
         }
 
         .msg-ctrl .icon {
@@ -1243,6 +1246,8 @@ LANDING PAGE — Minimal Onboarding
 
         .msg-ctrl.copied {
             color: var(--accent);
+            background: var(--accent-muted);
+            gap: 5px;
         }
 
         /* ── Thinking Animation ── */
@@ -1405,6 +1410,58 @@ LANDING PAGE — Minimal Onboarding
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        /* ── Tooltips ── */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background: #1a1a1a;
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 550;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border-default);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            letter-spacing: normal;
+        }
+
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Arrow for tooltip */
+        [data-tooltip]::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            border: 6px solid transparent;
+            border-top-color: var(--border-default);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 9999;
+        }
+
+        [data-tooltip]:hover::before {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
 
         .model-dropdown-label {
@@ -1638,14 +1695,14 @@ LANDING PAGE — Minimal Onboarding
             height: 18px;
         }
 
-        /* Image generation result card — Balanced Premium Design */
+        /* Image generation result card — Clean, No Black Bar */
         .imggen-card {
             display: inline-block;
             position: relative;
             border-radius: var(--radius-m);
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.08); /* More subtle */
-            background: transparent; /* No background since it hugs image */
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: transparent;
             margin: 12px auto 0;
             max-width: 580px;
             box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 40px rgba(192, 132, 252, 0.05);
@@ -1660,57 +1717,47 @@ LANDING PAGE — Minimal Onboarding
         .imggen-card img {
             width: 100%;
             height: auto;
-            max-height: 85vh; /* Limit height naturally */
-            object-fit: contain; /* Keep pure aspect natively */
+            max-height: 85vh;
+            object-fit: contain;
             display: block;
             cursor: zoom-in;
         }
 
-        .imggen-card-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 30px 16px 12px 16px;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
-            border-top: none;
-            box-sizing: border-box;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.25s ease;
-        }
-
-        .imggen-card:hover .imggen-card-footer {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .imggen-card-label {
-            font-size: 11.5px;
-            color: #fff;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        /* Title above image */
+        .imggen-card-title {
+            font-size: 13px;
+            color: var(--text-secondary);
             font-weight: 500;
+            padding: 10px 14px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            padding-right: 12px;
-            flex: 1;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            letter-spacing: -0.01em;
+        }
+
+        /* Actions below image */
+        .imggen-card-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .imggen-download-btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 14px;
+            padding: 6px 16px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: var(--radius-pill);
-            background: rgba(255, 255, 255, 0.03);
-            color: var(--text-primary);
-            font-size: 11px;
-            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            font-size: 11.5px;
+            font-weight: 550;
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
@@ -1719,6 +1766,7 @@ LANDING PAGE — Minimal Onboarding
         .imggen-download-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
             transform: scale(1.02);
         }
 
@@ -4107,6 +4155,26 @@ LANDING PAGE — Minimal Onboarding
             toastT = setTimeout(() => el.classList.remove("show"), 2500);
         }
 
+        function copyToClipboard(btn, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const origHTML = btn.innerHTML;
+                const origTitle = btn.getAttribute('title') || btn.getAttribute('data-tooltip');
+                
+                btn.classList.add("copied");
+                btn.innerHTML = `${icon('check', 'icon-sm')} Copied`;
+                
+                if (btn.hasAttribute('data-tooltip')) btn.setAttribute('data-tooltip', 'Copied!');
+                
+                toast("Copied to clipboard");
+                
+                setTimeout(() => {
+                    btn.classList.remove("copied");
+                    btn.innerHTML = origHTML;
+                    if (btn.hasAttribute('data-tooltip')) btn.setAttribute('data-tooltip', origTitle);
+                }, 2000);
+            });
+        }
+
         // ── Markdown/LaTeX Renderer ──
         if (typeof marked !== 'undefined' && window.markedKatex) {
             marked.use(window.markedKatex({
@@ -4164,7 +4232,7 @@ LANDING PAGE — Minimal Onboarding
 
                         const runBtn = canRun ? `<button class="code-canvas-btn run-btn" data-canvas-id="${id}" data-action="run" title="Run">${runSvg} Run</button>` : '';
 
-                        return `<div class="code-canvas" id="${id}" data-lang="${language}"><div class="code-canvas-header"><div class="code-canvas-lang"><span class="code-canvas-lang-dot"></span>${displayLang}</div><div class="code-canvas-actions"><button class="code-canvas-btn copy-btn" data-canvas-id="${id}" data-action="copy" title="Copy">${copySvg} Copy</button><button class="code-canvas-btn edit-btn" data-canvas-id="${id}" data-action="edit" title="Edit">${editSvg} Edit</button>${runBtn}</div></div><div class="code-canvas-body"><pre><code class="hljs language-${language}">${highlighted}</code></pre></div></div>`;
+                        return `<div class="code-canvas" id="${id}" data-lang="${language}"><div class="code-canvas-header"><div class="code-canvas-lang"><span class="code-canvas-lang-dot"></span>${displayLang}</div><div class="code-canvas-actions"><button class="code-canvas-btn copy-btn" data-canvas-id="${id}" data-action="copy" title="Copy">${copySvg} Copy</button><button class="code-canvas-btn edit-btn" data-canvas-id="${id}" data-action="edit" title="Title">${editSvg} Title</button>${runBtn}</div></div><div class="code-canvas-body"><pre><code class="hljs language-${language}">${highlighted}</code></pre></div></div>`;
                     }
                 }
             });
@@ -4183,14 +4251,7 @@ LANDING PAGE — Minimal Onboarding
             if (!codeEl) return;
 
             if (action === 'copy') {
-                const text = codeEl.textContent;
-                navigator.clipboard.writeText(text).then(() => {
-                    const origHTML = btn.innerHTML;
-                    btn.classList.add('copied');
-                    btn.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
-                    toast('Copied to clipboard');
-                    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = origHTML; }, 2000);
-                });
+                copyToClipboard(btn, codeEl.textContent);
             }
 
             if (action === 'edit') {
@@ -4663,14 +4724,7 @@ LANDING PAGE — Minimal Onboarding
 
         function wireActions(row, content, idx) {
             const copyBtn = row.querySelector(".copy-btn");
-            copyBtn?.addEventListener("click", () => {
-                navigator.clipboard.writeText(content).then(() => {
-                    copyBtn.classList.add("copied");
-                    copyBtn.innerHTML = `${icon('check', 'icon-sm')} Copied`;
-                    toast("Copied to clipboard");
-                    setTimeout(() => { copyBtn.classList.remove("copied"); copyBtn.innerHTML = `${icon('copy', 'icon-sm')} Copy`; }, 2000);
-                });
-            });
+            copyBtn?.addEventListener("click", () => copyToClipboard(copyBtn, content));
 
             row.querySelector(".regen-btn")?.addEventListener("click", () => {
                 if (S.streaming) return;
@@ -4800,8 +4854,8 @@ LANDING PAGE — Minimal Onboarding
                     row.querySelector(".msg-body").appendChild(ctrlDiv);
 
                     // Wire
-                    ctrlDiv.querySelector(".copy-btn").addEventListener("click", () => {
-                        navigator.clipboard.writeText(content).then(() => toast("Copied to clipboard"));
+                    ctrlDiv.querySelector(".copy-btn").addEventListener("click", (e) => {
+                        copyToClipboard(e.currentTarget, content);
                     });
                     ctrlDiv.querySelector(".regen-btn").addEventListener("click", () => {
                         if (S.streaming) return;
@@ -5370,16 +5424,15 @@ LANDING PAGE — Minimal Onboarding
                 const imgSrc = `data:image/png;base64,${base64}`;
                 const imgId = 'imggen-' + Date.now();
 
-                // Build the image card HTML — Minimalist & Expansive
+                // Build the image card HTML — Clean
+                const dlName = 'cleverly-' + Date.now() + '.png';
                 const cardHtml = `
                     <div class="imggen-card">
+                        <div class="imggen-card-title">${esc(prompt)}</div>
                         <img src="${imgSrc}" alt="${esc(prompt)}" id="${imgId}" onclick="window.open(this.src, '_blank')" />
-                        <div class="imggen-card-footer">
-                            <div class="imggen-card-label">
-                                ${esc(prompt)}
-                            </div>
-                            <button class="imggen-download-btn" onclick="(function(){var a=document.createElement('a');a.href='${imgSrc}';a.download='cleverly-${Date.now()}.png';a.click();})()">
-                                ${icon('file', 'icon-sm')} Download
+                        <div class="imggen-card-actions">
+                            <button class="imggen-download-btn" onclick="(function(){var a=document.createElement('a');a.href='${imgSrc}';a.download='${dlName}';a.click();})()">
+                                <span class="icon icon-sm"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span> Download
                             </button>
                         </div>
                     </div>
@@ -5788,6 +5841,54 @@ LANDING PAGE — Minimal Onboarding
         let sx2 = 0;
         document.addEventListener("touchstart", e => { sx2 = e.touches[0].clientX; }, { passive: true });
         document.addEventListener("touchend", e => { if (sx2 < 25 && e.changedTouches[0].clientX - sx2 > 50) openSidebar(); });
+
+        // ── Tooltips Utility ──
+        function initTooltips() {
+            // Convert titles to custom tooltips
+            document.querySelectorAll('[title]').forEach(el => {
+                const title = el.getAttribute('title');
+                if (title) {
+                    el.setAttribute('data-tooltip', title);
+                    el.removeAttribute('title');
+                }
+            });
+        }
+        // Run on load
+        initTooltips();
+        // Since we add elements dynamically, we should ideally use delegation or observer
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) { // Element
+                        if (node.hasAttribute('title')) {
+                            node.setAttribute('data-tooltip', node.getAttribute('title'));
+                            node.removeAttribute('title');
+                        }
+                        node.querySelectorAll('[title]').forEach(el => {
+                            el.setAttribute('data-tooltip', el.getAttribute('title'));
+                            el.removeAttribute('title');
+                        });
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // ── Source Protection ──
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        // Basic DevTools detection
+        let devtools = function() {};
+        devtools.toString = function() {
+            toast("Source code is protected.");
+            return '';
+        };
+        console.log('%c', devtools);
     </script>
 </body>
 
