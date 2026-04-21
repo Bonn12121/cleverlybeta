@@ -1245,45 +1245,38 @@ LANDING PAGE — Minimal Onboarding
         /* ── Thinking Animation ── */
         .thinking-label {
             display: inline-block;
-            background: linear-gradient(90deg, var(--text-quaternary) 0%, var(--bg-primary) 50%, var(--text-quaternary) 100%);
+            background: linear-gradient(90deg, #444 0%, #eee 50%, #444 100%);
             background-size: 200% auto;
             color: transparent;
             -webkit-background-clip: text;
             background-clip: text;
-            animation: sweep 2s linear infinite;
+            animation: sweep 1.5s linear infinite;
             font-style: italic;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.02em;
         }
 
         @keyframes sweep {
-            to {
-                background-position: -200% center;
-            }
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
         }
 
         /* ── Typing cursor ── */
         .typing-cursor {
             display: inline-block;
-            width: 2px;
-            height: 1.1em;
+            width: 2.5px;
+            height: 1.2em;
             background: var(--accent);
-            margin-left: 1px;
-            border-radius: 2px;
-            vertical-align: text-bottom;
-            animation: blink 1s ease-in-out infinite;
-            box-shadow: 0 0 6px rgba(0, 212, 255, 0.3);
+            margin-left: 2px;
+            border-radius: 1px;
+            vertical-align: middle;
+            animation: blink 0.8s step-end infinite;
+            box-shadow: 0 0 8px var(--accent);
         }
 
         @keyframes blink {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0;
-            }
+            50% { opacity: 0; }
         }
 
         /* ══════════════════════════════════════
@@ -4706,7 +4699,7 @@ LANDING PAGE — Minimal Onboarding
                 const elapsed = performance.now() - startTime;
                 const thinkingLabel = textEl.querySelector(".thinking-label");
                 if (thinkingLabel) {
-                    if (elapsed > 15000) {
+                    if (elapsed > 20000) {
                         thinkingLabel.textContent = "Last Check...";
                     } else if (elapsed > 10000) {
                         thinkingLabel.textContent = "Still Thinking...";
@@ -4718,6 +4711,11 @@ LANDING PAGE — Minimal Onboarding
             async function processQueue() {
                 if (isTyping) return;
                 isTyping = true;
+                
+                // Remove thinking label as soon as we start typing
+                const tl = textEl.querySelector(".thinking-label");
+                if (tl) tl.remove();
+
                 while (charQueue.length > 0) {
                     // Bigger chunks + shorter delays = much faster output
                     const chunkSz = charQueue.length > 250 ? 25 : (charQueue.length > 120 ? 12 : (charQueue.length > 50 ? 6 : (charQueue.length > 15 ? 3 : 1)));
