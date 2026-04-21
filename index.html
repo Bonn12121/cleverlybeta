@@ -1194,10 +1194,10 @@ LANDING PAGE — Minimal Onboarding
         /* ── Msg controls ── */
         .msg-controls {
             display: flex;
-            gap: 2px;
-            margin-top: 8px;
-            opacity: 0;
-            transition: opacity 0.15s ease;
+            align-items: center;
+            gap: 4px;
+            margin-top: 2px;
+            opacity: 1; /* Always visible */
         }
 
         .msg-row:hover .msg-controls {
@@ -1207,22 +1207,25 @@ LANDING PAGE — Minimal Onboarding
         .msg-ctrl {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 5px 10px;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            padding: 0;
             border: none;
-            border-radius: var(--radius-s);
+            border-radius: var(--radius-m);
             background: transparent;
-            color: var(--text-quaternary);
-            font-family: inherit;
-            font-size: 11.5px;
-            font-weight: 500;
+            color: var(--text-tertiary);
             cursor: pointer;
             transition: all 0.15s ease;
         }
 
         .msg-ctrl .icon {
-            width: 13px;
-            height: 13px;
+            width: 17px;
+            height: 17px;
+        }
+        
+        .msg-ctrl .icon svg {
+            stroke-width: 1.8;
         }
 
         .msg-ctrl:hover {
@@ -1257,8 +1260,8 @@ LANDING PAGE — Minimal Onboarding
         }
 
         @keyframes sweep {
-            0% { background-position: 200% center; }
-            100% { background-position: -200% center; }
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
         }
 
         /* ── Typing cursor ── */
@@ -4584,10 +4587,12 @@ LANDING PAGE — Minimal Onboarding
 
             if (role === "assistant" && idx >= 0) {
                 controls = `<div class="msg-controls">
-                <button class="msg-ctrl copy-btn" title="Copy">${icon('copy', 'icon-sm')} Copy</button>
-                <button class="msg-ctrl regen-btn" title="Regenerate">${icon('refresh', 'icon-sm')} Regenerate</button>
-                <button class="msg-ctrl up-btn" title="Good">${icon('thumbUp', 'icon-sm')}</button>
-                <button class="msg-ctrl down-btn" title="Bad">${icon('thumbDown', 'icon-sm')}</button>
+                <button class="msg-ctrl copy-btn" title="Copy">${icon('copy')}</button>
+                <button class="msg-ctrl up-btn" title="Good">${icon('thumbUp')}</button>
+                <button class="msg-ctrl down-btn" title="Bad">${icon('thumbDown')}</button>
+                <button class="msg-ctrl fake-share" title="Share"><span class="icon"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span></button>
+                <button class="msg-ctrl regen-btn" title="Regenerate">${icon('refresh')}</button>
+                <button class="msg-ctrl fake-more" title="More"><span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg></span></button>
             </div>`;
             }
 
@@ -4762,10 +4767,12 @@ LANDING PAGE — Minimal Onboarding
                     const ctrlDiv = document.createElement("div");
                     ctrlDiv.className = "msg-controls";
                     ctrlDiv.innerHTML = `
-                    <button class="msg-ctrl copy-btn" title="Copy">${icon('copy', 'icon-sm')} Copy</button>
-                    <button class="msg-ctrl regen-btn" title="Regenerate">${icon('refresh', 'icon-sm')} Regenerate</button>
-                    <button class="msg-ctrl up-btn" title="Good">${icon('thumbUp', 'icon-sm')}</button>
-                    <button class="msg-ctrl down-btn" title="Bad">${icon('thumbDown', 'icon-sm')}</button>`;
+                    <button class="msg-ctrl copy-btn" title="Copy">${icon('copy')}</button>
+                    <button class="msg-ctrl up-btn" title="Good">${icon('thumbUp')}</button>
+                    <button class="msg-ctrl down-btn" title="Bad">${icon('thumbDown')}</button>
+                    <button class="msg-ctrl fake-share" title="Share"><span class="icon"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></span></button>
+                    <button class="msg-ctrl regen-btn" title="Regenerate">${icon('refresh')}</button>
+                    <button class="msg-ctrl fake-more" title="More"><span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg></span></button>`;
                     row.querySelector(".msg-body").appendChild(ctrlDiv);
 
                     // Wire
