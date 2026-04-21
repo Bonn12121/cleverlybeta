@@ -1678,6 +1678,14 @@ LANDING PAGE — Minimal Onboarding
             background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 100%);
             border-top: none;
             box-sizing: border-box;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .imggen-card:hover .imggen-card-footer {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .imggen-card-label {
