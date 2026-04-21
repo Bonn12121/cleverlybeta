@@ -1242,9 +1242,26 @@ LANDING PAGE — Minimal Onboarding
             color: var(--accent);
         }
 
-        /* ── Typing cursor ── */
-}
+        /* ── Thinking Animation ── */
+        .thinking-label {
+            display: inline-block;
+            background: linear-gradient(90deg, var(--text-quaternary) 0%, var(--bg-primary) 50%, var(--text-quaternary) 100%);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: sweep 2s linear infinite;
+            font-style: italic;
+            font-weight: 500;
+        }
 
+        @keyframes sweep {
+            to {
+                background-position: -200% center;
+            }
+        }
+
+        /* ── Typing cursor ── */
         .typing-cursor {
             display: inline-block;
             width: 2px;
@@ -4221,16 +4238,7 @@ LANDING PAGE — Minimal Onboarding
         }
 
         function liveFallbacks(chosen) {
-            if (USE_SLOW_MODE) {
-                const order = [
-                    "nvidia/nemotron-3-super-120b-a12b", // Max
-                    "qwen/qwen3.5-397b-a17b",           // Pro
-                    "minimax/minimax-m2.7"              // Lite
-                ];
-                return order.filter(m => m !== chosen && !deadModels.has(m) && order.indexOf(m) > order.indexOf(chosen));
-            }
-            const pool = ALL_FREE;
-            return pool.filter(m => m !== chosen && !deadModels.has(m));
+            return []; // Fallback disabled per user request
         }
 
         function markDead(model) {
@@ -4677,7 +4685,7 @@ LANDING PAGE — Minimal Onboarding
             <div class="msg-avatar">${icon('bolt')}</div>
             <div class="msg-body">
                 <div class="msg-author">Cleverly</div>
-                <div class="msg-text"><span class="typing-cursor"></span></div>
+                <div class="msg-text"><span class="thinking-label">Thinking...</span><span class="typing-cursor"></span></div>
             </div>`;
             wrap.appendChild(row);
             c.scrollTop = c.scrollHeight;
@@ -4688,6 +4696,23 @@ LANDING PAGE — Minimal Onboarding
             let charQueue = [];
             let isTyping = false;
             let rawAcc = "";
+
+            let startTime = performance.now();
+            let thinkingInterval = setInterval(() => {
+                if (charQueue.length > 0 || acc.length > 0) {
+                    clearInterval(thinkingInterval);
+                    return;
+                }
+                const elapsed = performance.now() - startTime;
+                const thinkingLabel = textEl.querySelector(".thinking-label");
+                if (thinkingLabel) {
+                    if (elapsed > 15000) {
+                        thinkingLabel.textContent = "Last Check...";
+                    } else if (elapsed > 10000) {
+                        thinkingLabel.textContent = "Still Thinking...";
+                    }
+                }
+            }, 1000);
 
             let lastRender = 0;
             async function processQueue() {
@@ -4728,12 +4753,13 @@ LANDING PAGE — Minimal Onboarding
                     processQueue();
                 },
                 async finish() {
+                    clearInterval(thinkingInterval);
                     // Wait for all chars to be typed out
                     while (charQueue.length > 0 || isTyping) {
                         await new Promise(r => setTimeout(r, 30));
                     }
                     c.scrollTop = c.scrollHeight;
-                    cursor.remove();
+                    if (cursor) cursor.remove();
                     const content = acc;
                     const chat = active();
                     const ctrlDiv = document.createElement("div");
@@ -4765,7 +4791,10 @@ LANDING PAGE — Minimal Onboarding
 
                     return acc;
                 },
-                remove() { row.remove(); },
+                remove() { 
+                    clearInterval(thinkingInterval);
+                    row.remove(); 
+                },
             };
         }
 
@@ -5182,7 +5211,7 @@ LANDING PAGE — Minimal Onboarding
 
             let chosen = getModel();
 
-            let useFallback = true;
+            let useFallback = false;
             if (useMultimodalModel) {
                 chosen = USE_SLOW_MODE ? "qwen/qwen3.5-122b-a10b" : "qwen/qwen-2.5-vl-72b-instruct:free";
                 useFallback = false;
