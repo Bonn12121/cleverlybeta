@@ -17,7 +17,7 @@ app.post('/api/search', async (req, res) => {
     if (!query) return res.status(400).json({ error: "Missing 'q' parameter" });
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const timeout = setTimeout(() => controller.abort(), 10000);
         const r = await fetch('https://google.serper.dev/search', {
             method: 'POST',
             headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
@@ -41,7 +41,7 @@ app.post('/api/images', async (req, res) => {
     if (!query) return res.status(400).json({ error: "Missing 'q' parameter" });
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        const timeout = setTimeout(() => controller.abort(), 10000);
         const r = await fetch('https://google.serper.dev/images', {
             method: 'POST',
             headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
@@ -69,26 +69,27 @@ app.post('/api/completions', async (req, res) => {
             return res.status(413).json({ error: 'Payload too large', message: 'Attachments and prompt exceed size limit.' });
         }
 
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 60000);
         const nvidiaRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${NV_KEY}`,
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Authorization': `Bearer ${NV_KEY}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(req.body),
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
 
-        // Forward status and headers
         res.status(nvidiaRes.status);
         res.set('Content-Type', nvidiaRes.headers.get('content-type') || 'application/json');
+        res.set('X-Accel-Buffering', 'no'); // Disable proxy buffering for faster streaming
 
-        // Stream the response body
         const reader = nvidiaRes.body.getReader();
         const pump = async () => {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) { res.end(); return; }
-                res.write(Buffer.from(value));
+                res.write(value);
+                if (res.flush) res.flush(); // Flush compression buffers
             }
         };
         await pump();

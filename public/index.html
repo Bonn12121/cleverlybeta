@@ -5195,7 +5195,7 @@ LANDING PAGE — Minimal Onboarding
         async function doWebSearch(query) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 const res = await fetch('/api/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -5204,17 +5204,11 @@ LANDING PAGE — Minimal Onboarding
                 });
                 clearTimeout(timeoutId);
                 if (!res.ok) {
-                    const errBody = await res.json().catch(() => ({}));
-                    const errMsg = errBody.error || `Search failed (HTTP ${res.status})`;
-                    console.error('Search error:', errMsg, errBody);
-                    // Silent failure for auto-search/timeouts to avoid disruption
                     return null;
                 }
                 const data = await res.json();
                 return data;
             } catch (err) {
-                if (err.name === 'AbortError') console.warn('Web search timed out');
-                else console.error('Search fetch error:', err);
                 return null;
             }
         }
@@ -5223,7 +5217,7 @@ LANDING PAGE — Minimal Onboarding
         async function doImageSearch(query) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 const res = await fetch('/api/images', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -5235,8 +5229,6 @@ LANDING PAGE — Minimal Onboarding
                 const data = await res.json();
                 return data.images?.slice(0, 6) || [];
             } catch (err) {
-                if (err.name === 'AbortError') console.warn('Image search timed out');
-                else console.error('Image search error:', err);
                 return null;
             }
         }
@@ -5368,7 +5360,7 @@ LANDING PAGE — Minimal Onboarding
 
 
         // ── Intent Engine ──
-        const INTENT_KEYWORDS = /\b(weather|temperature|forecast|price|crypto|bitcoin|btc|eth|ethereum|solana|restaurant|cafe|food|pizza|sushi|map|directions|who is|who was|biography|born|died|location|address|where is)\b/i;
+        const INTENT_KEYWORDS = /\b(weather|temperature|forecast|price|crypto|bitcoin|btc|eth|ethereum|solana|restaurant|cafe|food|pizza|sushi|map|directions|who is|who was|biography|born|died|location|address|where is|news|stock|market|latest|current)\b/i;
         
         function detectIntentLocally(prompt) {
             return INTENT_KEYWORDS.test(prompt);
@@ -5506,24 +5498,54 @@ LANDING PAGE — Minimal Onboarding
                 return fb[attempt - 1] ?? null;
             }
 
+            let firstTokenReceived = false;
+            let currentModel = chosen;
+
             while (true) {
-                const model = nextModel();
+                const model = currentModel || nextModel();
                 if (!model) break;
                 if (attempt > 0) showRetry(`Trying another model…`);
                 setStatus(`Thinking…`);
 
                 const node = createStream();
+                
+                // Fast-Fallback Timer Logic
+                let fallbackTimer = null;
+                if (!firstTokenReceived) {
+                    fallbackTimer = setTimeout(() => {
+                        if (!firstTokenReceived) {
+                            console.warn("Model response took too long. Speed-boosting...");
+                            abortCtrl?.abort();
+                            node.remove();
+                            currentModel = "google/gemma-3-27b-it:free";
+                            toast(`🚀 Speed-boosting... switching to ${currentModel.split('/')[1]}`);
+                        }
+                    }, 8000); // 8 second threshold
+                }
+
                 let ok = false;
                 try {
-                    await callAPI(model, rawMsgs, t => node.append(t));
+                    await callAPI(model, rawMsgs, t => {
+                        if (!firstTokenReceived) {
+                            firstTokenReceived = true;
+                            if (fallbackTimer) clearTimeout(fallbackTimer);
+                        }
+                        node.append(t);
+                    });
                     const answer = await node.finish();
-                    if (!answer.trim()) { node.remove(); markDead(model); lastErr = new Error("Empty response — model may be unavailable."); attempt++; continue; }
+                    if (!answer.trim()) { node.remove(); markDead(model); lastErr = new Error("Empty response — model may be unavailable."); attempt++; currentModel = null; continue; }
                     chat.messages.push({ role: "assistant", content: answer });
                     save(); renderSidebar(); startCooldown(); showRetry("");
                     setNotice("");
                     setStatus(`Done`);
                     lastErr = null; ok = true;
                 } catch (err) {
+                    if (fallbackTimer) clearTimeout(fallbackTimer);
+                    if (err.name === "AbortError" && !firstTokenReceived) {
+                        // This was our fallback trigger
+                        attempt++;
+                        continue;
+                    }
                     if (err.name === "AbortError") {
                         const partial = await node.finish();
                         if (partial.trim()) { chat.messages.push({ role: "assistant", content: partial }); save(); } else node.remove();
@@ -5531,8 +5553,8 @@ LANDING PAGE — Minimal Onboarding
                     } else {
                         node.remove(); lastErr = err;
                         if (err.isAuthError) break;
-                        if (err.isUnavailable) { markDead(model); attempt++; continue; }
-                        if (err.isProviderError) { attempt++; continue; }
+                        if (err.isUnavailable) { markDead(model); attempt++; currentModel = null; continue; }
+                        if (err.isProviderError) { attempt++; currentModel = null; continue; }
                         break;
                     }
                 }
