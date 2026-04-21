@@ -36,17 +36,12 @@ export async function onRequest(context) {
     // Read the body text instead of passing the stream to prevent request issues
     const reqBody = await request.text();
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-
     // 2. Forward the request to NVIDIA
     const nvidiaResponse = await fetch(targetUrl, {
       method: "POST",
       headers: reqHeaders,
       body: reqBody,
-      signal: controller.signal,
     });
-    clearTimeout(timeoutId);
 
     // 3. Create a clean response with CORS headers
     const resHeaders = new Headers(nvidiaResponse.headers);
@@ -56,8 +51,6 @@ export async function onRequest(context) {
     resHeaders.delete("content-encoding");
     resHeaders.delete("content-length");
     resHeaders.delete("transfer-encoding");
-    resHeaders.set("X-Accel-Buffering", "no"); // Prevent proxy buffering
-    resHeaders.set("Cache-Control", "no-cache");
     
     return new Response(nvidiaResponse.body, {
       status: nvidiaResponse.status,
